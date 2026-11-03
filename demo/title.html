@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #050a14; font-family: -apple-system, 'PingFang SC', sans-serif; color: #fff; }
+  #bg { position: absolute; inset: -60px; background: url('title-bg.jpg') center / cover; filter: blur(18px) saturate(0.85); }
+  #shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 46%, rgba(8, 18, 38, 0.78), rgba(3, 7, 16, 0.97) 72%); }
+  #grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(56, 189, 248, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.055) 1px, transparent 1px); background-size: 64px 64px; }
+  .layer { position: absolute; inset: 0; }
+  .c { position: absolute; left: 0; right: 0; text-align: center; }
+  .mono { font-family: 'SF Mono', Menlo, monospace; }
+
+  /* 片头：宣言 */
+  #m1 { top: 430px; font-size: 54px; font-weight: 300; letter-spacing: 0.1em; color: #e2e8f0; }
+  #m2 { top: 530px; font-size: 54px; font-weight: 500; letter-spacing: 0.08em; }
+  #m2 b { color: #38bdf8; font-weight: 600; }
+
+  /* 产品名 */
+  #kicker { top: 238px; font-size: 19px; letter-spacing: 0.5em; color: #7dd3fc; }
+  #logo { position: absolute; left: 50%; top: 292px; margin-left: -70px; }
+  #title { top: 452px; font-size: 112px; font-weight: 600; letter-spacing: 0.2em; text-indent: 0.2em; }
+  #sub { top: 604px; font-size: 40px; font-weight: 300; letter-spacing: 0.24em; text-indent: 0.24em; color: #dbeafe; }
+  #en { top: 670px; font-size: 19px; letter-spacing: 0.28em; color: #93c5fd; }
+  #line { position: absolute; top: 722px; left: 50%; height: 2px; background: linear-gradient(90deg, transparent, #38bdf8, transparent); transform: translateX(-50%); }
+  #tags { top: 758px; font-size: 23px; letter-spacing: 0.08em; color: #cbd5e1; }
+  #tags span { display: inline-block; margin: 0 10px; padding: 7px 18px; border: 1px solid rgba(125, 211, 252, 0.35); border-radius: 4px; background: rgba(56, 189, 248, 0.07); }
+
+  /* 数字 */
+  #nk { top: 250px; font-size: 19px; letter-spacing: 0.5em; color: #7dd3fc; }
+  #nh { top: 300px; font-size: 52px; font-weight: 500; letter-spacing: 0.12em; }
+  #nums { position: absolute; top: 430px; left: 0; right: 0; display: flex; justify-content: center; gap: 0; }
+  .num { width: 360px; text-align: center; border-left: 1px solid rgba(125, 211, 252, 0.22); }
+  .num:first-child { border-left: none; }
+  .num .v { font: 600 120px/1 'SF Mono', Menlo, monospace; color: #fff; letter-spacing: -0.02em; }
+  .num .v small { font-size: 0.32em; color: #38bdf8; margin-left: 6px; font-weight: 500; }
+  .num .l { margin-top: 22px; font-size: 26px; color: #cbd5e1; letter-spacing: 0.12em; }
+  .num .e { margin-top: 8px; font-size: 14px; color: #64748b; letter-spacing: 0.24em; }
+  #nfoot { top: 720px; font-size: 26px; color: #e2e8f0; letter-spacing: 0.08em; line-height: 1.9; }
+  #nfoot b { color: #38bdf8; font-weight: 500; }
+
+  /* 片尾 */
+  #o-logo { position: absolute; left: 50%; top: 200px; margin-left: -55px; }
+  #o-title { top: 340px; font-size: 76px; font-weight: 600; letter-spacing: 0.16em; text-indent: 0.16em; }
+  #o-sub { top: 448px; font-size: 30px; font-weight: 300; letter-spacing: 0.2em; color: #bae6fd; }
+  #o-line { position: absolute; top: 515px; left: 50%; height: 2px; background: linear-gradient(90deg, transparent, #38bdf8, transparent); transform: translateX(-50%); }
+  #o-claim { top: 552px; font-size: 34px; color: #f1f5f9; letter-spacing: 0.08em; }
+  #o-run { top: 640px; }
+  #o-run span { display: inline-block; font: 500 26px 'SF Mono', Menlo, monospace; padding: 12px 30px; border-radius: 6px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.5); color: #e0f2fe; letter-spacing: 0.04em; }
+  #o-run span i { font-style: normal; color: #38bdf8; margin-right: 14px; }
+  #o-tech { top: 752px; font-size: 17px; color: #7dd3fc; letter-spacing: 0.26em; }
+  #o-note { top: 800px; font-size: 18px; color: #fbbf24; letter-spacing: 0.1em; }
+  #o-credit { bottom: 44px; font-size: 16px; color: #94a3b8; letter-spacing: 0.04em; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div id="bg"></div><div id="shade"></div><div id="grid"></div>
+
+<div id="intro" class="layer">
+  <div id="m1" class="c">相图，不是一组要背的线和规则。</div>
+  <div id="m2" class="c">它是由<b>守恒律、平衡与优化约束</b>定义的数学对象。</div>
+  <div id="kicker" class="c mono">INTRODUCING</div>
+  <svg id="logo" width="140" height="130" viewBox="0 0 32 30">
+    <path id="lg1" d="M16 3 L29 26 L3 26 Z" fill="none" stroke="#38bdf8" stroke-width="1.3" stroke-linejoin="round" />
+    <path id="lg2" d="M16 3 L16 14" stroke="#fff" stroke-width="1" fill="none" />
+    <path id="lg3" d="M9 20 L16 14 L23 20" stroke="#fff" stroke-width="1" fill="none" stroke-linejoin="round" />
+    <circle id="lg4" cx="16" cy="14" r="1.5" fill="#f43f5e" />
+  </svg>
+  <div id="title" class="c">三元相图</div>
+  <div id="sub" class="c">数学分析与可解释推理平台</div>
+  <div id="en" class="c mono">TERNARY PHASE DIAGRAMS · MATHEMATICAL ANALYSIS &amp; EXPLAINABLE REASONING</div>
+  <div id="line"></div>
+  <div id="tags" class="c"><span>线性代数</span><span>解析几何</span><span>计算几何</span><span>热力学</span><span>优化</span></div>
+</div>
+
+<div id="stats" class="layer">
+  <div id="nk" class="c mono">BY THE NUMBERS</div>
+  <div id="nh" class="c">每一个结论，都可以被复现</div>
+  <div id="nums">
+    <div class="num"><div class="v" data-to="6">0</div><div class="l">分析页面</div><div class="e mono">PAGES</div></div>
+    <div class="num"><div class="v" data-to="6">0</div><div class="l">预设体系</div><div class="e mono">SYSTEMS</div></div>
+    <div class="num"><div class="v" data-to="10">0</div><div class="l">组验证算例</div><div class="e mono">VALIDATION CASES</div></div>
+    <div class="num"><div class="v" data-to="214">0</div><div class="l">项自动测试全部通过</div><div class="e mono">TESTS PASSING</div></div>
+  </div>
+  <div id="nfoot" class="c">一个全局物理状态 <b>(体系, x₀, T)</b> 贯穿全部页面<br />任意页面与状态都能用一条<b>深链接</b>完整复现</div>
+</div>
+
+<div id="outro" class="layer">
+  <svg id="o-logo" width="110" height="102" viewBox="0 0 32 30">
+    <path d="M16 3 L29 26 L3 26 Z" fill="none" stroke="#38bdf8" stroke-width="1.3" stroke-linejoin="round" />
+    <path d="M16 3 L16 14 M9 20 L16 14 L23 20" stroke="#fff" stroke-width="1" fill="none" stroke-linejoin="round" />
+    <circle cx="16" cy="14" r="1.5" fill="#f43f5e" />
+  </svg>
+  <div id="o-title" class="c">三元相图</div>
+  <div id="o-sub" class="c">数学分析与可解释推理平台</div>
+  <div id="o-line"></div>
+  <div id="o-claim" class="c">不必死记 —— 每条线、每条规则都能被推导、计算与验证。</div>
+  <div id="o-run" class="c"><span><i>$</i>npm install &amp;&amp; npm run dev</span></div>
+  <div id="o-tech" class="c mono">REACT · TYPESCRIPT · THREE.JS · ZUSTAND · VITEST</div>
+  <div id="o-note" class="c">示意模型 · 假想组元 A–B–C，不代表任何真实材料</div>
+  <div id="o-credit" class="c">
+    Music: “Voxel Revolution” Kevin MacLeod (incompetech.com)<br />
+    Licensed under Creative Commons: By Attribution 4.0 License · creativecommons.org/licenses/by/4.0/
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  const ease = (p) => 1 - Math.pow(1 - clamp(p), 3);
+  const seg = (t, a, d) => ease((t - a) / d);
+  const out = (t, a, d) => 1 - ease((t - a) / d);
+  function show(el, p, dy = 24, base = '') {
+    el.style.opacity = p;
+    el.style.transform = `${base} translateY(${(1 - p) * dy}px)`;
+  }
+  function dash(el, p) {
+    const L = el.getTotalLength();
+    el.style.strokeDasharray = L;
+    el.style.strokeDashoffset = L * (1 - clamp(p));
+  }
+
+  function intro(t) {
+    // 0–3.6 s：宣言；3.6 s 起：产品名
+    const mOut = out(t, 3.0, 0.6);
+    show($('m1'), Math.min(seg(t, 0.3, 0.9), mOut), 20);
+    show($('m2'), Math.min(seg(t, 1.3, 0.9), mOut), 20);
+    const T = t - 3.6;
+    show($('kicker'), seg(T, 0.0, 0.7));
+    $('logo').style.opacity = seg(T, 0.1, 0.4);
+    dash($('lg1'), seg(T, 0.1, 1.2));
+    dash($('lg2'), seg(T, 0.9, 0.5));
+    dash($('lg3'), seg(T, 1.1, 0.6));
+    $('lg4').style.opacity = seg(T, 1.6, 0.3);
+    $('lg4').setAttribute('r', 1.5 + 0.8 * Math.max(0, Math.sin((T - 1.6) * 3)) * (T > 1.6 && T < 2.65 ? 1 : 0));
+    const ts = seg(T, 0.4, 1.1);
+    $('title').style.opacity = ts;
+    $('title').style.transform = `scale(${1.08 - 0.08 * ts})`;
+    $('title').style.filter = `blur(${(1 - ts) * 8}px)`;
+    show($('sub'), seg(T, 1.0, 0.9));
+    show($('en'), seg(T, 1.3, 0.9), 12);
+    $('line').style.width = 1000 * seg(T, 1.4, 1.3) + 'px';
+    [...$('tags').children].forEach((s, i) => show(s, seg(T, 2.0 + i * 0.13, 0.6), 16));
+  }
+
+  function stats(t) {
+    show($('nk'), seg(t, 0.2, 0.7));
+    show($('nh'), seg(t, 0.4, 0.8));
+    [...document.querySelectorAll('.num')].forEach((n, i) => {
+      const a = 0.9 + i * 0.22;
+      show(n, seg(t, a, 0.7), 30);
+      const v = n.querySelector('.v');
+      const to = +v.dataset.to;
+      v.textContent = Math.round(to * seg(t, a, 1.4));
+    });
+    show($('nfoot'), seg(t, 2.6, 0.9));
+  }
+
+  function outro(t) {
+    $('o-logo').style.opacity = seg(t, 0.2, 0.6);
+    const ts = seg(t, 0.4, 1.0);
+    $('o-title').style.opacity = ts;
+    $('o-title').style.transform = `scale(${1.06 - 0.06 * ts})`;
+    show($('o-sub'), seg(t, 0.8, 0.8));
+    $('o-line').style.width = 900 * seg(t, 1.0, 1.2) + 'px';
+    show($('o-claim'), seg(t, 1.4, 0.9));
+    show($('o-run'), seg(t, 2.0, 0.8));
+    show($('o-tech'), seg(t, 2.5, 0.8));
+    show($('o-note'), seg(t, 2.8, 0.8));
+    show($('o-credit'), seg(t, 3.1, 0.8), 10);
+  }
+
+  window.render = (kind, t, dur) => {
+    const fade = Math.min(clamp(t / 0.6), clamp((dur - t) / 0.7));
+    $('bg').style.transform = `scale(${1.08 - 0.06 * clamp(t / dur)})`;
+    document.body.style.opacity = kind === 'intro' ? Math.min(clamp(t / 0.4), clamp((dur - t) / 0.5)) : fade;
+    for (const k of ['intro', 'stats', 'outro']) $(k).style.display = k === kind ? 'block' : 'none';
+    ({ intro, stats, outro })[kind](t);
+  };
+</script>
+</body>
+</html>

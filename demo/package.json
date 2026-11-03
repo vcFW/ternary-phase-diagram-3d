@@ -1,0 +1,14 @@
+{
+  "name": "ternary-phase-diagram-demo-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs",
+    "titles": "node titles.mjs",
+    "assemble": "python3 assemble.py",
+    "video": "node titles.mjs && node capture.mjs && python3 assemble.py"
+  },
+  "dependencies": {
+    "puppeteer-core": "23.6.0"
+  }
+}

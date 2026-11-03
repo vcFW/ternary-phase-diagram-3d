@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #060b16; font-family: -apple-system, 'PingFang SC', sans-serif; }
+  #bg { position: absolute; inset: -40px; background: url('title-bg.jpg') center / cover; filter: blur(16px) saturate(0.9); }
+  #shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(8, 18, 38, 0.80), rgba(4, 8, 18, 0.96) 75%); }
+  #grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(56, 189, 248, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.06) 1px, transparent 1px); background-size: 64px 64px; }
+  .center { position: absolute; left: 0; right: 0; text-align: center; color: #fff; }
+  #kicker { top: 250px; font: 600 20px 'SF Mono', Menlo, monospace; letter-spacing: 0.42em; color: #7dd3fc; }
+  #tri { position: absolute; left: 50%; top: 300px; transform: translateX(-50%); }
+  #title { top: 470px; font-size: 84px; font-weight: 600; letter-spacing: 0.12em; }
+  #sub { top: 590px; font-size: 30px; font-weight: 300; letter-spacing: 0.16em; color: #bae6fd; }
+  #line { position: absolute; top: 650px; left: 50%; height: 2px; background: linear-gradient(90deg, transparent, #38bdf8, transparent); transform: translateX(-50%); }
+  #tags { top: 680px; font-size: 22px; letter-spacing: 0.1em; color: #cbd5e1; }
+  #tags span { display: inline-block; margin: 0 14px; padding: 6px 16px; border: 1px solid rgba(125, 211, 252, 0.35); border-radius: 3px; background: rgba(56, 189, 248, 0.06); }
+  #feat { top: 690px; font-size: 26px; color: #e2e8f0; line-height: 2; letter-spacing: 0.06em; }
+  #tech { top: 845px; font: 18px 'SF Mono', Menlo, monospace; color: #7dd3fc; letter-spacing: 0.2em; }
+  #credit { bottom: 46px; font-size: 17px; color: #94a3b8; letter-spacing: 0.04em; line-height: 1.7; }
+  #note { top: 893px; font-size: 18px; color: #fbbf24; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+<div id="bg"></div><div id="shade"></div><div id="grid"></div>
+<div id="kicker" class="center">METALLURGICAL PHYSICAL CHEMISTRY · 冶金物理化学</div>
+<svg id="tri" width="220" height="150" viewBox="-10 -10 220 150">
+  <polygon id="triPoly" points="0,130 200,130 100,-3.2" fill="none" stroke="#38bdf8" stroke-width="2" />
+  <polyline id="valley" points="78,130 96,82 133,72" fill="none" stroke="#fff" stroke-width="2" opacity="0.9" />
+  <polyline id="valley2" points="96,82 50,64" fill="none" stroke="#fff" stroke-width="2" opacity="0.9" />
+  <circle id="ept" cx="96" cy="82" r="5" fill="#f43f5e" />
+</svg>
+<div id="title" class="center">三元相图三维交互平台</div>
+<div id="sub" class="center">Interactive 3D Ternary Phase Diagram Platform</div>
+<div id="line"></div>
+<div id="tags" class="center"><span>液相面</span><span>等温截面</span><span>垂直截面</span><span>液相面投影</span><span>冷却模拟</span></div>
+<div id="feat" class="center">严谨的相平衡数学模型 · 实时三维交互 · 多视图同步<br />面向钢铁冶金教学与科研的可扩展可视化原型</div>
+<div id="tech" class="center">REACT · TYPESCRIPT · THREE.JS</div>
+<div id="note" class="center">教学模型 · 非实测数据</div>
+<div id="credit" class="center">
+  Music: “Voxel Revolution” Kevin MacLeod (incompetech.com)<br />
+  Licensed under Creative Commons: By Attribution 4.0 License · creativecommons.org/licenses/by/4.0/
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  const ease = (p) => 1 - Math.pow(1 - clamp(p), 3);
+  const seg = (t, a, d) => ease((t - a) / d);
+  function show(el, p, dy = 24) {
+    el.style.opacity = p;
+    el.style.transform = (el.id === 'tri' || el.id === 'line' ? 'translateX(-50%) ' : '') + `translateY(${(1 - p) * dy}px)`;
+  }
+  function dash(el, p) {
+    const L = el.getTotalLength();
+    el.style.strokeDasharray = L;
+    el.style.strokeDashoffset = L * (1 - clamp(p));
+  }
+  window.render = (kind, t, dur) => {
+    const outro = kind === 'outro';
+    const fadeOut = clamp((dur - t) / 0.8);
+    $('bg').style.transform = `scale(${1.06 - 0.05 * clamp(t / dur)})`;
+    document.body.style.opacity = Math.min(clamp(t / 0.6), fadeOut);
+    show($('kicker'), seg(t, 0.2, 0.8));
+    $('tri').style.opacity = seg(t, 0.3, 0.6);
+    $('tri').style.transform = 'translateX(-50%)';
+    dash($('triPoly'), seg(t, 0.3, 1.4));
+    dash($('valley'), seg(t, 1.2, 0.9));
+    dash($('valley2'), seg(t, 1.4, 0.8));
+    $('ept').style.opacity = seg(t, 1.9, 0.4);
+    $('ept').setAttribute('r', 5 + 3 * Math.max(0, Math.sin((t - 1.9) * 3)) * (t > 1.9 ? 1 : 0));
+    show($('title'), seg(t, 0.6, 1.0), 40);
+    show($('sub'), seg(t, 1.1, 0.9));
+    $('line').style.width = 900 * seg(t, 1.3, 1.2) + 'px';
+    $('line').style.opacity = 1;
+    $('line').style.transform = 'translateX(-50%)';
+    $('tags').style.display = outro ? 'none' : 'block';
+    $('feat').style.display = $('tech').style.display = $('credit').style.display = $('note').style.display = outro ? 'block' : 'none';
+    if (!outro) {
+      [...$('tags').children].forEach((s, i) => show(s, seg(t, 1.8 + i * 0.15, 0.6), 16));
+    } else {
+      show($('feat'), seg(t, 1.4, 0.9));
+      show($('tech'), seg(t, 2.0, 0.8));
+      show($('note'), seg(t, 2.3, 0.8));
+      show($('credit'), seg(t, 2.6, 0.8), 10);
+    }
+  };
+</script>
+</body>
+</html>
