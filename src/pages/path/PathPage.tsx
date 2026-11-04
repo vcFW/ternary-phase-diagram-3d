@@ -4,6 +4,7 @@ import type { TraceSample } from '../../core/cooling';
 import type { PhaseDiagram } from '../../core/diagram';
 import { conservationResidual } from '../../math/lever';
 import { fmtNum } from '../../math/linalg';
+import { phaseRule, phaseRuleText } from '../../math/phaseRule';
 import { usePlayback } from '../../panels/CoolingDock';
 import { invariantAnalyses, scheilOf } from '../../state/derived';
 import { useStore } from '../../state/store';
@@ -12,6 +13,7 @@ import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot, type Series } from '../../viz/XYPlot';
 import { Eq, KV, MatrixView, Panel, Prov } from '../../viz/MathView';
 import { SliderRow } from '../../ui/controls';
+import { COLOR } from '../../ui/tokens';
 
 const SECTIONS: Section[] = [
   { id: 'equilibrium', title: '平衡冷却逐步推演', sub: '守恒方程 · 事件 · 反应矩阵' },
@@ -36,7 +38,7 @@ function fracSeries(d: PhaseDiagram, samples: TraceSample[]): Series[] {
   return ids.map((id) => ({
     id,
     pts: samples.map((s) => [s.t, s.eq.phases.find((p) => p.id === id)?.frac ?? 0] as [number, number]),
-    color: id === 'L' ? '#3a78b5' : phaseColor(d, id),
+    color: id === 'L' ? COLOR.phase.liquid : phaseColor(d, id),
     label: id === 'L' ? '液相 L' : id,
   }));
 }
@@ -60,9 +62,10 @@ function EquilibriumSection() {
   const Tc: Series[] = useMemo(() => [{ id: 'T', pts: S.map((s) => [s.t, toC(s.T)] as [number, number]), color: '#1d2229', label: '冷却曲线 T(t)' }], [S]);
   const xl: Series[] = useMemo(() => {
     const L = S.filter((s) => s.eq.phases.some((p) => p.si < 0));
-    return [0, 1, 2].map((i) => ({ id: `x${i}`, pts: L.map((s) => [s.t, s.eq.phases.find((p) => p.si < 0)!.x[i]] as [number, number]), color: ['#d95319', '#0072bd', '#77ac30'][i], label: `x_L(${sym[i]})` }));
+    return [0, 1, 2].map((i) => ({ id: `x${i}`, pts: L.map((s) => [s.t, s.eq.phases.find((p) => p.si < 0)!.x[i]] as [number, number]), color: COLOR.component[i], label: `x_L(${sym[i]})` }));
   }, [S, sym]);
   const res = conservationResidual(eq.phases, x0);
+  const rule = phaseRule(d, eq, x0, xi >= 0);
   const inv = invariantAnalyses(d);
   const tNow = cur?.t ?? 0;
   const evLines = trace.events.map((e) => ({ x: e.t, color: e.plateau ? '#c00000' : '#7b8490' }));
@@ -83,7 +86,7 @@ function EquilibriumSection() {
                       {P.length === 2 && <line x1={P[0][0]} y1={P[0][1]} x2={P[1][0]} y2={P[1][1]} className="lnk" strokeWidth={1.8} />}
                       {P.length === 4 && <polygon points={P.map((p) => p.join(',')).join(' ')} className="tri-fill bad" />}
                       {eq.phases.map((p, k) => (
-                        <circle key={k} cx={P[k][0]} cy={P[k][1]} r={p.si < 0 ? 5 : 4} fill={p.si < 0 ? '#3a78b5' : phaseColor(d, p.id)} stroke="#1d2229" />
+                        <circle key={k} cx={P[k][0]} cy={P[k][1]} r={p.si < 0 ? 5 : 4} fill={p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id)} stroke="#1d2229" />
                       ))}
                       <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀（固定）" />
                     </>
@@ -108,14 +111,14 @@ function EquilibriumSection() {
               M={[0, 1, 2].map((i) => [...eq.phases.map((p) => p.x[i]), x0[i]])}
               rowLabels={sym}
               colLabels={[...eq.phases.map((p) => p.id), 'x₀']}
-              colColors={[...eq.phases.map((p) => (p.si < 0 ? '#3a78b5' : phaseColor(d, p.id))), '#1d2229']}
+              colColors={[...eq.phases.map((p) => (p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id))), '#1d2229']}
               aug={eq.phases.length}
             />
             <KV
               rows={[
                 ['f', <span className="mono">({eq.phases.map((p) => fmtNum(p.frac, 5)).join(', ')})</span>],
                 ['残差 ‖Σfc − x₀‖∞ / |Σf − 1| / min f', <span className="mono">{res.mass.toExponential(1)} / {res.norm.toExponential(1)} / {fmtNum(res.min, 4)}</span>],
-                ['P / F', <span className="mono">{eq.phases.length} / {xi >= 0 ? 0 : eq.dof}</span>],
+                ['P / C / F', <span className="mono" title={rule.reason || undefined}>{rule.P} / {rule.C} / {rule.F}</span>],
               ]}
             />
           </Panel>
@@ -143,7 +146,7 @@ function EquilibriumSection() {
                       <p>{e.detail}</p>
                       {after && !e.plateau && e.kind !== 'end' && (
                         <p className="small">
-                          之后：{after.eq.key}，P = {after.eq.phases.length}，F = {after.eq.dof}。
+                          之后：{after.eq.key}，{phaseRuleText(phaseRule(d, after.eq, x0))}。
                           {after.eq.phases.length === 2 && after.eq.phases.some((p) => p.si < 0) && ' 守恒 ⇒ 液相沿 固相→x₀ 射线背离固相（背向线规则）。'}
                           {after.eq.phases.length === 3 && after.eq.phases.some((p) => p.si < 0) && ' F = 1：液相被约束在界线上，由 T 唯一确定。'}
                         </p>
@@ -178,7 +181,7 @@ function ScheilSection() {
   const fin = sch[sch.length - 1];
   const eqFin = trace.finalPhases;
   const ids = Array.from(new Set([...Object.keys(fin.solids), ...eqFin.map((p) => p.id)]));
-  const eqL: Series = { id: 'eqL', pts: trace.samples.map((s) => [toC(s.T), s.eq.phases.find((p) => p.si < 0)?.frac ?? 0] as [number, number]).filter((p) => p[0] <= toC(trace.Tliq) + 1), color: '#3a78b5', label: '平衡：液相分数' };
+  const eqL: Series = { id: 'eqL', pts: trace.samples.map((s) => [toC(s.T), s.eq.phases.find((p) => p.si < 0)?.frac ?? 0] as [number, number]).filter((p) => p[0] <= toC(trace.Tliq) + 1), color: COLOR.phase.liquid, label: '平衡：液相分数' };
   const scL: Series = { id: 'scL', pts: sch.map((s) => [toC(s.T), s.fL] as [number, number]), color: '#c00000', dash: '5 3', label: 'Scheil：剩余液相分数' };
   const Tlo = Math.min(...trace.samples.map((s) => s.T), ...sch.map((s) => s.T));
   return (
@@ -191,7 +194,7 @@ function ScheilSection() {
               <TernaryPlot d={d} background="fields" onPick={(x) => setX0(x, false)}>
                 {(m) => (
                   <>
-                    <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke="#3a78b5" strokeWidth={3} />
+                    <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke={COLOR.phase.liquid} strokeWidth={3} />
                     <polyline points={sch.map((s) => m.px(s.xL).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={1.8} strokeDasharray="5 3" />
                     <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀" />
                   </>
@@ -199,7 +202,7 @@ function ScheilSection() {
               </TernaryPlot>
             </div>
             <div className="legend-inline">
-              <span><i style={{ background: '#3a78b5' }} />平衡冷却</span>
+              <span><i style={{ background: COLOR.phase.liquid }} />平衡冷却</span>
               <span><i style={{ background: '#c00000' }} />Scheil</span>
             </div>
           </Panel>

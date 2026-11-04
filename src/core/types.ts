@@ -82,10 +82,10 @@ export interface Equilibrium {
   phases: PhaseAmount[];
   /** 相区键：'L'、'L+A'、'L+A+D'、'A+D+C' */
   key: string;
-  /** 恒压凝聚体系相律 F = C − P + 1 = 4 − P */
-  dof: number;
   /** 吉布斯能（相对纯固相组元）/ (J·mol⁻¹) */
   G: number;
+  /** 求解未完全收敛时的说明（仅固溶体体系的通用求解器给出） */
+  warning?: string;
 }
 
 export type ReactionType = 'eutectic' | 'transition' | 'peritectic';

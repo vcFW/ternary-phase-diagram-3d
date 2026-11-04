@@ -8,6 +8,7 @@ import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { Derivation, Eq, KV, M, MatrixView, Panel, Prov, VecView } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
+import { COLOR } from '../../ui/tokens';
 
 /**
  * 成分向量：为什么一个物理状态可以写成向量？
@@ -47,7 +48,7 @@ export function VectorsSection() {
                         <Arrow p={A} q={pB} cls="vec" />
                         <Arrow p={pB} q={P} cls="grad" />
                         <line x1={A[0]} y1={A[1]} x2={P[0]} y2={P[1]} className="lnk dash" />
-                        <text x={(A[0] + pB[0]) / 2} y={(A[1] + pB[1]) / 2 + 14} className="pt-lab" fill="#0072bd">x_B·(B − A)</text>
+                        <text x={(A[0] + pB[0]) / 2} y={(A[1] + pB[1]) / 2 + 14} className="pt-lab" fill={COLOR.component[1]}>x_B·(B − A)</text>
                         <text x={(pB[0] + P[0]) / 2 + 6} y={(pB[1] + P[1]) / 2} className="pt-lab" fill="#d95319">x_C·(C − A)</text>
                         <Handle m={m} x={x0} onDrag={(x) => setX0(x)} label="x₀" />
                       </>

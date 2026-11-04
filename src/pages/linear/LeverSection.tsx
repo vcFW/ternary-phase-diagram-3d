@@ -7,7 +7,9 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { Derivation, Eq, KV, M, MatrixView, Panel, Prov, type Step } from '../../viz/MathView';
-import { Chip, SliderRow, Toggle } from '../../ui/controls';
+import { Chip, Toggle } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
+import { COLOR } from '../../ui/tokens';
 
 interface Ph {
   id: string;
@@ -44,7 +46,7 @@ export function LeverSection() {
     setChosen((c) => (c.includes(id) ? c.filter((v) => v !== id) : c.length >= 4 ? c : [...c, id]));
   };
   const colLabels = phases.map((p) => p.id);
-  const colColors = phases.map((p) => (p.id === 'L' ? '#3a78b5' : p.color));
+  const colColors = phases.map((p) => (p.id === 'L' ? COLOR.phase.liquid : p.color));
   const elim = r && r.k >= 2 && r.k <= 3 ? gaussSteps(r.A.map((row, i) => [...row, r.b[i]]), ['x_A 行', 'x_B 行', 'Σ 行']) : null;
   const setF = (j: number, v: number) => {
     if (!r?.f || phases.length < 2) return;
@@ -179,7 +181,7 @@ export function LeverSection() {
             <div className="sublabel">参与方程的相（点击切换，最多 4 个；关闭"跟随平衡相"即可自由组合做反例）</div>
             <div className="chips">
               {avail.map((a) => (
-                <Chip key={a.id} color={a.id === 'L' ? '#3a78b5' : a.color} active={chosen.includes(a.id)} onClick={() => toggle(a.id)}>
+                <Chip key={a.id} color={a.id === 'L' ? COLOR.phase.liquid : a.color} active={chosen.includes(a.id)} onClick={() => toggle(a.id)}>
                   {a.id === 'L' ? `液相 L（当前平衡液相）` : a.id}
                 </Chip>
               ))}
@@ -188,7 +190,7 @@ export function LeverSection() {
               <>
                 <div className="sublabel">拖动相分数 → c₀ = Σ fᵢcᵢ 随之更新（约束 Σf = 1、f ≥ 0）</div>
                 {phases.map((p, j) => (
-                  <SliderRow key={p.id} label={`f(${p.id})`} labelWidth={52} color={colColors[j]} value={Math.max(0, Math.min(1, r.f![j]))} min={0} max={1} step={0.005} digits={3} onChange={(v) => setF(j, v)} />
+                  <LocalParam key={p.id} label={`f(${p.id})`} labelWidth={52} color={colColors[j]} value={Math.max(0, Math.min(1, r.f![j]))} min={0} max={1} step={0.005} digits={3} onChange={(v) => setF(j, v)} />
                 ))}
                 <p className="note">注意：若改变后的 c₀ 离开了当前相区，平衡相组合会改变（关闭"跟随平衡相"可固定相组合）。</p>
               </>

@@ -61,7 +61,6 @@ describe.each(diagrams)('$p.id', ({ d }) => {
       }
       expect(Math.abs(sum - 1)).toBeLessThan(1e-9);
       for (let i = 0; i < 3; i++) expect(Math.abs(mix[i] - x[i])).toBeLessThan(1e-6);
-      expect(eq.dof).toBe(4 - eq.phases.length);
     }
   });
 

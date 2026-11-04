@@ -63,7 +63,7 @@ src/math/       与界面无关的数学层（纯 TypeScript，可单独测试�
 src/viz/        可复用可视化：TernaryPlot（SVG 三元图）、XYPlot、Axo3D（轴测三维 = 显式线性投影）、MathView（矩阵 / 推导 / 来源标记）
 src/pages/      六个路由级页面
 src/scene/ src/panels/  原三维场景与工作台面板（保留）
-legacy/v2/      本次升级前的源码快照；legacy/src 为更早版本
+（旧版源码快照已从工作树移除：`git checkout legacy-v1 -- legacy/src`、`git checkout legacy-v2 -- legacy/v2` 可取回）
 ```
 
 结论来源统一标记：**数学推导**（仅守恒与几何）/ **模型计算**（依赖示意热力学模型）/ **演示模型** / **假设** / **无法唯一确定**。

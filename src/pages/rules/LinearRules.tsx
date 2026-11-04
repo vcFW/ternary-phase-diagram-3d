@@ -11,6 +11,7 @@ import { Arrow, Handle, TernaryPlot, type TriMap } from '../../viz/TernaryPlot';
 import { Eq, KV, M, Panel, Prov } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
 import { Layers5 } from './RulesPage';
+import { COLOR } from '../../ui/tokens';
 
 const PT = (m: TriMap, x: Comp) => m.px(x);
 
@@ -55,7 +56,7 @@ export function LeverRule() {
                     <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.4} />
                     <line x1={pa[0]} y1={pa[1]} x2={pb[0]} y2={pb[1]} className={`lnk ${r.status !== 'ok' ? 'hi' : ''}`} strokeWidth={2} />
                     <Handle m={m} x={a} onDrag={setA} color="#d95319" label={`α  f=${r.f ? fmtNum(r.f[0], 3) : '—'}`} />
-                    <Handle m={m} x={b} onDrag={setB} color="#0072bd" label={`β  f=${r.f ? fmtNum(r.f[1], 3) : '—'}`} />
+                    <Handle m={m} x={b} onDrag={setB} color={COLOR.accent} label={`β  f=${r.f ? fmtNum(r.f[1], 3) : '—'}`} />
                     <Handle m={m} x={c} onDrag={onC} color="#c00000" label="c₀" />
                   </>
                 );
@@ -251,8 +252,8 @@ export function RatioRule() {
                       <line x1={V[0]} y1={V[1]} x2={F[0]} y2={F[1]} className="lnk hi" />
                       {ticks.map((tk) => (
                         <g key={tk.t}>
-                          <circle cx={tk.p[0]} cy={tk.p[1]} r={3} fill="#0072bd" />
-                          <text x={tk.p[0] + 6} y={tk.p[1] + 3} className="pt-lab" fill="#0072bd">
+                          <circle cx={tk.p[0]} cy={tk.p[1]} r={3} fill={COLOR.accent} />
+                          <text x={tk.p[0] + 6} y={tk.p[1] + 3} className="pt-lab" fill={COLOR.accent}>
                             {sym[j]}:{sym[k]} = {fmtNum(tk.q[j] / (tk.q[k] || 1e-12), 3)}
                           </text>
                         </g>

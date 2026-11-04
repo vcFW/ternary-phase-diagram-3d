@@ -7,6 +7,7 @@ import { toXY } from '../core/barycentric';
 import { currentSpec, useStore } from '../state/store';
 import { useSize } from '../ui/useSize';
 import type { Comp } from '../core/types';
+import { COLOR } from '../ui/tokens';
 
 const MARGIN = { l: 44, r: 12, t: 10, b: 26 };
 
@@ -15,6 +16,7 @@ export function VerticalView() {
   const T = useStore((s) => s.T);
   const x0 = useStore((s) => s.x0);
   const vertOn = useStore((s) => s.vertOn);
+  const coolingMode = useStore((s) => s.mode === 'cooling');
   const section = useStore((s) => s.section);
   const setX0 = useStore((s) => s.setX0);
   const setT = useStore((s) => s.setT);
@@ -57,7 +59,7 @@ export function VerticalView() {
     layRef.current = lay;
     // 当前温度线
     const Y = lay.TToY(T);
-    ctx.strokeStyle = '#0072BD';
+    ctx.strokeStyle = COLOR.accent;
     ctx.lineWidth = 1.6;
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
@@ -68,7 +70,7 @@ export function VerticalView() {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.font = `600 ${f}px system-ui, sans-serif`;
-    haloText(ctx, cel(T), lay.x + 6, Y - 3, THEME_LIGHT, '#0072BD');
+    haloText(ctx, cel(T), lay.x + 6, Y - 3, THEME_LIGHT, COLOR.accent);
     // 状态点在截面上的投影
     const P = toXY(spec.p1);
     const Q = toXY(spec.p2);
@@ -105,7 +107,8 @@ export function VerticalView() {
     const lay = layRef.current;
     if (!lay) return;
     const t = lay.yToT(Math.min(lay.y + lay.h, Math.max(lay.y, Y)));
-    if (mode === 'T') setT(t);
+    // 冷却模式下 x₀ 固定：只改温度
+    if (mode === 'T' || useStore.getState().mode === 'cooling') setT(t);
     else {
       const u = Math.min(1, Math.max(0, lay.xToU(X)));
       const x = lerpComp(spec.p1, spec.p2, u);
@@ -142,7 +145,7 @@ export function VerticalView() {
   return (
     <div className="view">
       <div className="view-tools">
-        <span className="dim small">单击/拖动设定状态点（成分 + 温度）；拖动青色虚线仅调温度</span>
+        <span className="dim small">{coolingMode ? '冷却模式：x₀ 固定，单击/拖动只改变温度' : '单击/拖动设定状态点（成分 + 温度）；拖动青色虚线仅调温度'}</span>
         <span className="grow" />
         {!vertOn && <span className="badge warn">三维截面平面已隐藏</span>}
       </div>

@@ -8,7 +8,9 @@ import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
 import { Derivation, Eq, KV, M, MatrixView, Panel } from '../../viz/MathView';
-import { Segmented, SliderRow } from '../../ui/controls';
+import { Segmented } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
+import { COLOR } from '../../ui/tokens';
 
 /**
  * 等温线 = 液相面 T = T_liq(x) 的等值集；界线 = 三维空间曲线 (x(s), T(s)) 的投影。
@@ -72,7 +74,7 @@ export function GeometrySection() {
             <div className="legend-inline">
               <span><i style={{ background: '#d95319' }} />−∇T_liq（最速降温方向）</span>
               <span><i style={{ background: '#7b8490' }} />等温线切向（⊥ ∇T）</span>
-              <span><i style={{ background: '#0072bd' }} />初晶析出时液相移动方向（背离 {s.label}）</span>
+              <span><i style={{ background: COLOR.accent }} />初晶析出时液相移动方向（背离 {s.label}）</span>
             </div>
             <KV
               rows={[
@@ -131,7 +133,7 @@ export function GeometrySection() {
                     }}
                   </TernaryPlot>
                 </div>
-                <SliderRow label="弧长 s / L" labelWidth={80} value={sFrac} min={0} max={1} step={0.005} digits={3} onChange={setSFrac} />
+                <LocalParam label="弧长 s / L" labelWidth={80} value={sFrac} min={0} max={1} step={0.005} digits={3} onChange={setSFrac} />
                 <XYPlot
                   height={170}
                   series={[{ id: 'T', pts: Tseries, color: '#1d2229', label: 'T(s)：界线温度（三维曲线的高度）' }]}

@@ -134,7 +134,7 @@ export function computeTrace(d: PhaseDiagram, x0: Comp, opts?: { dT?: number; Ts
           }
         });
         phases.sort((a, b) => a.si - b.si);
-        const e2: Equilibrium = { phases, key: phases.map((p) => p.id).join('+'), dof: 0, G: 0 };
+        const e2: Equilibrium = { phases, key: phases.map((p) => p.id).join('+'), G: 0 };
         push(Te, e2, xi, pi, Qe + (Ha - Hb) * xi);
       }
       const iv = d.topo.invariants.find((v) => v.rank === 'ternary' && Math.abs(v.T - Te) < 0.05)

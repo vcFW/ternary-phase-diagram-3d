@@ -5,9 +5,12 @@ import { useStore } from './state/store';
 import './styles.css';
 import './shell.css';
 import './workspace.css';
+import { applyCssVariables } from './ui/tokens';
 
-// 便于在控制台调试 / 自动化验证
-(window as unknown as { __store: typeof useStore }).__store = useStore;
+applyCssVariables();
+
+// 便于在控制台调试 / 自动化验证（仅开发模式）
+if (import.meta.env.DEV) (window as unknown as { __store: typeof useStore }).__store = useStore;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

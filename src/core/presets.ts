@@ -104,10 +104,11 @@ export const PRESETS: Preset[] = [
     params: { components: comps(), omega: { AB: 0, AC: 0, BC: 0 }, compounds: [binaryD(-4000)], Cp: 30 },
     examples: [
       { name: 'D 成分点：一致熔融', x: [0.5, 0.5, 0], note: 'D 在自身成分点熔化（熔点极大），凝固为纯 D，无转熔。', final: 'D' },
+      { name: 'D–C 连线上（伪二元）', x: [0.3, 0.3, 0.4], note: '成分点在 D–C 连线上：终态为 C + D 两相。该连线是真正的伪二元截面，有效组元数 C = 2（相律 F = C − P + 1）。', final: 'C+D' },
       { name: 'A–D–C 副三角形内', x: [0.3, 0.2, 0.5], note: '终点为 E₁（A + C + D 共晶）。', final: 'A+C+D' },
       { name: 'D–B–C 副三角形内', x: [0.15, 0.5, 0.35], note: '终点为 E₂（B + C + D 共晶）。', final: 'B+C+D' },
     ],
-    x0: [0.3, 0.3, 0.4],
+    x0: [0.32, 0.3, 0.38],
     tunable: 0,
   },
   {

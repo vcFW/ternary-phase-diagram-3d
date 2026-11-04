@@ -9,8 +9,9 @@ import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
 import { Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
-import { SliderRow } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
 import { Layers5 } from './RulesPage';
+import { COLOR } from '../../ui/tokens';
 
 function CurvePicker({ d, ci, setCi }: { d: PhaseDiagram; ci: number; setCi: (i: number) => void }) {
   return (
@@ -63,7 +64,7 @@ export function AlkemadeRule() {
                   return (
                     <>
                       <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.5} />
-                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke="#0072bd" strokeWidth={2} />
+                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={2} />
                       <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={3} opacity={0.6} />
                       <circle cx={p[0]} cy={p[1]} r={4.5} fill="#7e2f8e" />
                     </>
@@ -77,13 +78,13 @@ export function AlkemadeRule() {
               xlabel="界线弧长 s"
               ylabel="T / °C"
               vlines={[
-                ...(ak.sCross !== null ? [{ x: ak.sCross, color: '#0072bd', label: '与连线相交' }] : []),
+                ...(ak.sCross !== null ? [{ x: ak.sCross, color: COLOR.accent, label: '与连线相交' }] : []),
                 ...(ak.sMax !== null ? [{ x: ak.sMax, color: '#c00000', label: '温度极大', dash: '2 2' }] : []),
               ]}
               points={[{ x: s, y: toC(an.frame.T), color: '#7e2f8e' }]}
               onPick={(x) => setSFrac(Math.max(0, Math.min(1, x / cp.length)))}
             />
-            <SliderRow label="位置 s/L" labelWidth={70} value={s / cp.length} min={0} max={1} step={0.002} digits={3} onChange={setSFrac} />
+            <LocalParam label="位置 s/L" labelWidth={70} value={s / cp.length} min={0} max={1} step={0.002} digits={3} onChange={setSFrac} />
             <KV
               rows={[
                 ['交点弧长 / 温度', <span className="mono">{ak.sCross !== null ? `${fmtNum(ak.sCross, 5)} / ${cel(ak.TCross!, 3)}` : '界线范围内无交点'}</span>],
@@ -195,7 +196,7 @@ export function TangentRule() {
                   return (
                     <>
                       <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.45} />
-                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke="#0072bd" strokeWidth={2.2} />
+                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={2.2} />
                       <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={3} opacity={0.55} />
                       {X && <line x1={p[0]} y1={p[1]} x2={X[0]} y2={X[1]} stroke="#7e2f8e" strokeWidth={1.3} strokeDasharray="5 3" />}
                       <Arrow p={p} q={[p[0] + t[0] * 55, p[1] + t[1] * 55]} cls="tan" />
@@ -206,7 +207,7 @@ export function TangentRule() {
                 }}
               </TernaryPlot>
             </div>
-            <SliderRow label="位置 s/L" labelWidth={70} value={sFrac} min={0.02} max={0.98} step={0.002} digits={3} onChange={setSFrac} />
+            <LocalParam label="位置 s/L" labelWidth={70} value={sFrac} min={0.02} max={0.98} step={0.002} digits={3} onChange={setSFrac} />
             <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>
               <MatrixView name="[t | −(b−a)]" M={ti.M} digits={4} />
               <MatrixView name="a − p" M={ti.rhs.map((v) => [v])} digits={4} />
@@ -227,7 +228,7 @@ export function TangentRule() {
               height={170}
               series={[{ id: 'l', pts: scan, color: '#7e2f8e', label: 'λ(s)' }]}
               ylim={[-1.5, 2.5]}
-              hlines={[{ y: 0, color: '#0072bd', label: 'λ = 0' }, { y: 1, color: '#0072bd', label: 'λ = 1' }]}
+              hlines={[{ y: 0, color: COLOR.accent, label: 'λ = 0' }, { y: 1, color: COLOR.accent, label: 'λ = 1' }]}
               vlines={[{ x: s, color: '#7e2f8e' }]}
               xlabel="界线弧长 s"
               ylabel="λ"

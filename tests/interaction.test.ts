@@ -131,3 +131,26 @@ describe('交互模式', () => {
     useStore.getState().setPlaying(false);
   });
 });
+
+describe('冷却模式下的垂直截面', () => {
+  it('切到冷却模式时截面自动过状态点，且后续单击只改变温度', async () => {
+    const { currentSpec } = await import('../src/state/store');
+    const { distToSection } = await import('../src/core/sections');
+    const st = useStore.getState();
+    st.setMode('composition');
+    st.loadPreset('binary-incongruent');
+    useStore.getState().setX0([0.6, 0.25, 0.15], false);
+    let s = useStore.getState();
+    expect(s.section.mode).toBe('join');
+    expect(distToSection(currentSpec(s), s.x0)).toBeGreaterThan(0.01); // D–C 连线不过该点
+    s.setMode('cooling');
+    s = useStore.getState();
+    expect(s.section.mode).toBe('point');
+    expect(distToSection(currentSpec(s), s.x0)).toBeLessThan(1e-9);
+    // 冷却模式拒绝改 x₀，但 setT 正常
+    const x0 = [...s.x0];
+    s.setX0([0.3, 0.3, 0.4]);
+    expect(useStore.getState().x0).toEqual(x0);
+    s.setMode('composition');
+  });
+});

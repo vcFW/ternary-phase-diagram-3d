@@ -1,8 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { colormapGradient } from '../core/colormap';
 import { cel, phaseColor, regionName, toC } from '../core/colors';
+import type { PhaseDiagram } from '../core/diagram';
 import { useStore } from '../state/store';
+import { COLOR } from '../ui/tokens';
 import { PhaseScene, type HoverInfo } from './PhaseScene';
+
+/** 由拓扑生成线 / 点图例：无转熔线、无过渡点的体系不显示相应条目 */
+function legendMarks(d: PhaseDiagram): { text: string; color: string; dot?: boolean }[] {
+  const kinds = new Set(d.topo.curves.flatMap((c) => c.pieces.map((p) => p.kind)));
+  const pts = new Set(d.topo.invariants.filter((iv) => iv.rank === 'ternary').map((iv) => iv.reaction.type));
+  const out: { text: string; color: string; dot?: boolean }[] = [];
+  if (kinds.has('eutectic')) out.push({ text: '共晶线 ▸', color: COLOR.line.eutectic });
+  if (kinds.has('transition')) out.push({ text: '过渡型转熔线 ▸▸', color: COLOR.line.transition });
+  if (kinds.has('peritectic')) out.push({ text: '转熔线 ▸▸', color: COLOR.line.peritectic });
+  if (pts.has('eutectic')) out.push({ text: '共晶点 E', color: COLOR.point.eutectic, dot: true });
+  if (pts.has('transition')) out.push({ text: '过渡点 U', color: COLOR.point.transition, dot: true });
+  if (pts.has('peritectic')) out.push({ text: '包晶点 P', color: COLOR.point.peritectic, dot: true });
+  out.push({ text: '结晶路径', color: COLOR.path });
+  return out;
+}
 
 export function Viewport3D() {
   const host = useRef<HTMLDivElement>(null);
@@ -64,6 +81,9 @@ export function Viewport3D() {
     a.click();
   };
 
+  // 图例条目只列当前体系实际存在的界线 / 不变点类型
+  const markLegend = legendMarks(d);
+
   const selText = (() => {
     if (!sel) return null;
     if (sel.kind === 'invariant') {
@@ -114,12 +134,10 @@ export function Viewport3D() {
             ))}
           </>
         )}
-        <div className="lg-sep" />
-        <div className="lg-row"><i className="ln" style={{ background: '#1d2229' }} /><span>共晶线 ▸</span></div>
-        <div className="lg-row"><i className="ln" style={{ background: '#c00000' }} /><span>转熔线 ▸▸</span></div>
-        <div className="lg-row"><i className="dot" style={{ background: '#0072BD' }} /><span>共晶点 E</span></div>
-        <div className="lg-row"><i className="dot" style={{ background: '#D95319' }} /><span>过渡点 U</span></div>
-        <div className="lg-row"><i className="ln" style={{ background: '#7E2F8E' }} /><span>结晶路径</span></div>
+        {markLegend.length > 0 && <div className="lg-sep" />}
+        {markLegend.map((m) => (
+          <div key={m.text} className="lg-row"><i className={m.dot ? 'dot' : 'ln'} style={{ background: m.color }} /><span>{m.text}</span></div>
+        ))}
       </div>
       {selText && (
         <div className="vp-sel">

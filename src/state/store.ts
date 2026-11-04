@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { computeTrace, sampleIndexAtT, type Trace } from '../core/cooling';
 import { PhaseDiagram } from '../core/diagram';
-import { defaultSection, resolveSection, type SectionConfig } from '../core/sections';
+import { defaultSection, resolveSection, sectionThroughState, type SectionConfig } from '../core/sections';
 import { getPreset, PRESETS, type Preset } from '../core/presets';
 import type { Comp, Equilibrium, SystemParams } from '../core/types';
 
@@ -296,7 +296,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setIdx: (i) => {
     const s = get();
-    if (s.mode !== 'cooling') set({ mode: 'cooling' });
+    if (s.mode !== 'cooling') get().setMode('cooling');
     const n = s.trace.samples.length;
     const idx = Math.min(n - 1, Math.max(0, i));
     const sm = s.trace.samples[Math.round(idx)];
@@ -305,7 +305,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // 播放冷却过程即"固定 x₀、改变 T"：自动进入冷却凝固模式
-  setPlaying: (playing) => set(playing && get().mode !== 'cooling' ? { playing, mode: 'cooling' } : { playing }),
+  setPlaying: (playing) => {
+    if (playing && get().mode !== 'cooling') {
+      get().setMode('cooling');
+      set({ playing });
+    } else set({ playing });
+  },
   setSpeed: (speed) => set({ speed }),
   setSection: (p) => set({ section: { ...get().section, ...p } }),
   setLayers: (p) => set({ layers: { ...get().layers, ...p } }),
@@ -321,7 +326,12 @@ export const useStore = create<AppState>((set, get) => ({
     const s = get();
     if (mode === s.mode) return;
     // 进入冷却模式：时间轴对齐到当前温度；回到成分探索：退出平台、停止播放
-    if (mode === 'cooling') set({ mode, idx: sampleIndexAtT(s.trace, s.T), playing: false });
+    if (mode === 'cooling') {
+      // 冷却模式下 x₀ 固定，垂直截面必须经过状态点；否则自动切到"过状态点"（沿用原方向）
+      const through = sectionThroughState(s.section, s.diagram, s.x0);
+      set({ mode, idx: sampleIndexAtT(s.trace, s.T), playing: false, ...(through ? { section: through } : {}) });
+      if (through) get().flash('冷却模式：垂直截面已切换为"过状态点"（沿用原方向），使状态点位于截面上。');
+    }
     else set({ mode, playing: false, xi: -1, eq: s.diagram.equilibrium(s.x0, s.T) });
   },
   flash: (text) => set({ notice: { text, at: Date.now() } }),

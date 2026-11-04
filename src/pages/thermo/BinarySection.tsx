@@ -6,7 +6,9 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
 import { Derivation, Eq, M, Panel, Prov } from '../../viz/MathView';
-import { Segmented, SliderRow } from '../../ui/controls';
+import { Segmented } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
+import { COLOR, SERIES } from '../../ui/tokens';
 
 type Src = 'edge' | 'ss';
 const EDGES: [0 | 1 | 2, 0 | 1 | 2][] = [
@@ -23,6 +25,7 @@ const EDGES: [0 | 1 | 2, 0 | 1 | 2][] = [
 export function BinarySection() {
   const d = useStore((s) => s.diagram);
   const Tg = useStore((s) => s.T);
+  const setTglobal = useStore((s) => s.setT);
   const [src, setSrc] = useState<Src>('edge');
   const [edge, setEdge] = useState(0);
   const [T, setTl] = useState(Tg);
@@ -44,7 +47,7 @@ export function BinarySection() {
         const x = k / 400;
         p.push([x, c.G(x) / 1000]);
       }
-      series.push({ id: c.id, pts: p, color: c.id === 'L' ? '#3a78b5' : '#d95319', label: c.id === 'L' ? 'G_L(x)' : `G_${c.id}(x)` });
+      series.push({ id: c.id, pts: p, color: c.id === 'L' ? COLOR.phase.liquid : COLOR.component[0], label: c.id === 'L' ? 'G_L(x)' : `G_${c.id}(x)` });
     } else if (c.point) {
       const s = d.solids.find((q) => q.id === c.id);
       pts.push({ x: c.point.x, y: c.point.G / 1000, color: s ? solidColor(s.index) : '#1d2229', r: 4.5, label: c.id });
@@ -73,7 +76,7 @@ export function BinarySection() {
   }, [src, d, i, j, ss, range.Tmin, range.Tmax]);
   const pd: Series[] = [];
   const kinds = Array.from(new Set(diag.map((p) => p.kind)));
-  const palette = ['#0072bd', '#d95319', '#77ac30', '#7e2f8e', '#edb120', '#4dbeee', '#a2142f'];
+  const palette: readonly string[] = SERIES;
   kinds.forEach((kd, ki) => {
     const rows = diag.filter((p) => p.kind === kd);
     const [la, lb] = kd.split('|');
@@ -106,11 +109,11 @@ export function BinarySection() {
               ylabel="G / (kJ·mol⁻¹)，以纯固相为基准"
               vlines={be.tangents.flatMap((t) => [{ x: t.xa, color: '#7b8490' }, { x: t.xb, color: '#7b8490' }])}
             />
-            <SliderRow label="T" labelWidth={30} value={toC(T)} min={Math.ceil(toC(range.Tmin))} max={Math.floor(toC(range.Tmax))} step={1} unit="°C" onChange={(v) => setTl(toK(v))} />
+            <LocalParam label="T" labelWidth={30} value={toC(T)} min={Math.ceil(toC(range.Tmin))} max={Math.floor(toC(range.Tmax))} step={1} digits={0} unit="°C" onChange={(v) => setTl(toK(v))} global={toC(Tg)} onSetGlobal={(v) => setTglobal(toK(v))} />
             {src === 'ss' && (
               <div className="grid2">
-                <SliderRow label="Ω_L" labelWidth={34} value={ss.omegaL / 1000} min={-10} max={20} step={0.5} digits={1} unit="kJ" onChange={(v) => setSs({ ...ss, omegaL: v * 1000 })} />
-                <SliderRow label="Ω_α" labelWidth={34} value={ss.omegaS / 1000} min={-10} max={30} step={0.5} digits={1} unit="kJ" onChange={(v) => setSs({ ...ss, omegaS: v * 1000 })} />
+                <LocalParam label="Ω_L" labelWidth={34} value={ss.omegaL / 1000} min={-10} max={20} step={0.5} digits={1} unit="kJ" onChange={(v) => setSs({ ...ss, omegaL: v * 1000 })} />
+                <LocalParam label="Ω_α" labelWidth={34} value={ss.omegaS / 1000} min={-10} max={30} step={0.5} digits={1} unit="kJ" onChange={(v) => setSs({ ...ss, omegaS: v * 1000 })} />
               </div>
             )}
             <table className="grid">

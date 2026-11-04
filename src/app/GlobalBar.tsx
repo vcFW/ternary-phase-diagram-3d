@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cel, regionName, solidColor, toC, toK } from '../core/colors';
 import { getPreset, PRESETS } from '../core/presets';
+import { phaseRule, phaseRuleText } from '../math/phaseRule';
 import { useStore } from '../state/store';
 import { NumField, SliderRow } from '../ui/controls';
 
@@ -30,6 +31,7 @@ export function GlobalBar({ page }: { page: string }) {
     return () => clearTimeout(t);
   }, [notice]);
   const [copied, setCopied] = useState(false);
+  const rule = phaseRule(d, eq, x0, xi >= 0);
   const range = d.tRange();
   const sym = d.params.components.map((c) => c.symbol);
   const copy = async () => {
@@ -80,7 +82,8 @@ export function GlobalBar({ page }: { page: string }) {
       </div>
       <div className="gbar-state" title="当前总成分与温度下的平衡相组合（PhaseDiagram 模型计算）">
         <b>{regionName(eq.key).replace(/^.*?：/, '')}</b>
-        <span className="mono">P = {eq.phases.length} · F = {xi >= 0 ? 0 : eq.dof}</span>
+        <span className="mono" title={rule.reason || undefined}>{phaseRuleText(rule)}</span>
+        {eq.warning && <span className="warn-badge" title={eq.warning}>⚠ 求解未完全收敛</span>}
       </div>
       <div className="grow" />
       <span className="gbar-tag" title="全部参数为假想组元的示意值，不代表任何真实材料">示意模型 · 非真实材料数据</span>

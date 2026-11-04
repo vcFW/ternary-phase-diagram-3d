@@ -10,6 +10,7 @@ import { invariantAnalyses } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { Derivation, Eq, KV, MatrixView, Prov, type Step } from '../../viz/MathView';
 import { XYPlot, type Series } from '../../viz/XYPlot';
+import { COLOR } from '../../ui/tokens';
 
 type Tab = 'eq' | 'rx' | 'geo' | 'stab' | 'math' | 'evo' | 'sel' | 'info';
 
@@ -90,7 +91,7 @@ function EqTab({ an }: { an: PointAnalysis }) {
             ['温度 T', <span className="mono">{cel(an.T, 2)}（{an.T.toFixed(2)} K）</span>],
             ['三维位置 (x_A, x_B, T)', <span className="mono">({an.x0[0].toFixed(4)}, {an.x0[1].toFixed(4)}, {an.T.toFixed(1)} K)</span>],
             ['液相线 T_liq(x₀)', <span className="mono">{cel(an.Tliq, 2)}，初晶 {d.solids[an.liqSi].label}；当前 {an.T >= an.Tliq ? '高于' : '低于'}液相线 {Math.abs(an.T - an.Tliq).toFixed(1)} K</span>],
-            ['相数 P / 自由度 F = 4 − P', <span className="mono">{an.P} / {xi >= 0 ? 0 : an.F}{xi >= 0 ? '（不变反应平台）' : ''}</span>],
+            ['相律 F = C − P + 1', <span className="mono" title={an.ruleNote || undefined}>P = {an.P} · C = {an.C} · F = {xi >= 0 ? 0 : an.F}{xi >= 0 ? '（不变反应平台）' : ''}</span>],
             ['交互模式', <span>{mode === 'composition' ? '成分探索（x₀ 可变，T 为参数）' : '冷却凝固（x₀ 固定，T 变化）'}</span>],
           ]}
         />
@@ -109,14 +110,14 @@ function EqTab({ an }: { an: PointAnalysis }) {
             {an.phases.map((p) => (
               <tr key={p.id + p.si}>
                 <td>
-                  <i className="swatch" style={{ background: p.si < 0 ? '#0072BD' : phaseColor(d, p.id) }} />
+                  <i className="swatch" style={{ background: p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id) }} />
                   {p.id}
                 </td>
                 <td>{p.kind === 'liquid' ? '液相（溶液）' : p.kind === 'solution' ? '固溶体' : '化学计量相'}</td>
                 <td className="num">{cstr(p.x)}</td>
                 <td className="num">
                   <div className="fbar">
-                    <span style={{ width: `${p.frac * 100}%`, background: p.si < 0 ? '#0072BD' : phaseColor(d, p.id) }} />
+                    <span style={{ width: `${p.frac * 100}%`, background: p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id) }} />
                   </div>
                   {pc(p.frac)}%
                 </td>
@@ -406,7 +407,7 @@ function EvoTab({ an, history }: { an: PointAnalysis; history: { x: Comp; G: num
     const fs: Series[] = ids.map((id) => ({
       id,
       pts: S.filter((s) => s.xi < 0).map((s) => [toC(s.T), s.eq.phases.find((p) => p.id === id)?.frac ?? 0] as [number, number]),
-      color: id === 'L' ? '#0072BD' : phaseColor(d, id),
+      color: id === 'L' ? COLOR.phase.liquid : phaseColor(d, id),
       label: id,
     }));
     const gs: Series[] = [{ id: 'G', pts: S.filter((s) => s.xi < 0).map((s) => [toC(s.T), s.eq.G / 1000] as [number, number]), color: '#1d2229', label: 'G_eq(T)' }];

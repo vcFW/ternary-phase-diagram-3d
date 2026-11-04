@@ -471,7 +471,7 @@
 .tp-inv {
   stroke: #1d2229;
   stroke-width: 0.8;
-  fill: #0072bd;
+  fill: var(--accent);
 }
 .tp-inv.transition {
   fill: #d95319;
@@ -487,7 +487,7 @@
   fill: currentColor;
 }
 .arrow.vec {
-  color: #0072bd;
+  color: var(--accent);
 }
 .arrow.grad {
   color: #d95319;
@@ -515,7 +515,7 @@
 }
 .tri-fill {
   fill: rgba(0, 114, 189, 0.1);
-  stroke: #0072bd;
+  stroke: var(--accent);
   stroke-width: 1.3;
 }
 .tri-fill.bad {
@@ -1018,7 +1018,7 @@ table.grid td.num {
   border-left: 1px solid #4a5866;
 }
 .gbar-mode button.on {
-  background: #0072bd;
+  background: var(--accent);
   color: #fff;
 }
 .gbar-field.locked .numfield input {

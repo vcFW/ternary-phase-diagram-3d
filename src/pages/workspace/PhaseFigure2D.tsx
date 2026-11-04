@@ -8,6 +8,7 @@ import { curveAtPoint, type PointAnalysis } from '../../math/pointAnalysis';
 import { parametrize } from '../../math/spaces';
 import { useStore } from '../../state/store';
 import { useSize } from '../../ui/useSize';
+import { COLOR } from '../../ui/tokens';
 
 /**
  * 交互式二维相图（"移动一个点，同时理解几何、数学与物理"）。
@@ -17,8 +18,8 @@ import { useSize } from '../../ui/useSize';
  *     在"冷却凝固"模式下 x₀ 固定（只显示液相成分随温度的演化）。
  */
 
-const LIQ = '#0072BD';
-const X0C = '#C00000';
+const LIQ = COLOR.phase.liquid;
+const X0C = COLOR.stateX0;
 
 export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: Comp[] }) {
   const d = useStore((s) => s.diagram);
@@ -163,8 +164,8 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
   if (ov.vec) {
     const A = P([1, 0, 0]);
     const mid = P([1 - x0[1], x0[1], 0]);
-    overlays.push(<Arrow key="vecB" from={A} to={mid} color="#0072BD" label={`x_${sym[1]}(${sym[1]}−${sym[0]})`} />);
-    overlays.push(<Arrow key="vecC" from={mid} to={p0} color="#77AC30" label={`x_${sym[2]}(${sym[2]}−${sym[0]})`} />);
+    overlays.push(<Arrow key="vecB" from={A} to={mid} color={COLOR.component[1]} label={`x_${sym[1]}(${sym[1]}−${sym[0]})`} />);
+    overlays.push(<Arrow key="vecC" from={mid} to={p0} color={COLOR.component[2]} label={`x_${sym[2]}(${sym[2]}−${sym[0]})`} />);
   }
   // 液相轨迹
   if (ov.path && trace.liquidPath.length > 1) {
@@ -225,7 +226,7 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
       overlays.push(arrow(q, [-a2.frame.tCool[1], a2.frame.tCool[0]], 36, '#77AC30', 'n', 'seln'));
       const A = P(a2.ya);
       const B = P(a2.yb);
-      overlays.push(<line key="seljoin" x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke="#0072BD" strokeWidth={1.4} />);
+      overlays.push(<line key="seljoin" x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={1.4} />);
       if (a2.ti.point) {
         const X = P(a2.ti.point);
         overlays.push(<line key="selext" x1={q[0]} y1={q[1]} x2={X[0]} y2={X[1]} stroke="#7E2F8E" strokeWidth={1} strokeDasharray="5 3" />);
@@ -273,7 +274,7 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
       <canvas ref={cv} style={{ width: w, height: h }} />
       <svg width={w} height={h} className="f2-svg" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = false)} onPointerLeave={() => setTip(null)} style={{ cursor: mode === 'composition' ? 'crosshair' : 'default' }}>
         <defs>
-          {['#C00000', '#0072BD', '#77AC30', '#D95319', '#7b8490', '#7E2F8E', '#4DBEEE'].map((c) => (
+          {[...new Set([COLOR.stateX0, COLOR.accent, COLOR.component[2], COLOR.component[0], COLOR.muted, COLOR.compound[1], COLOR.compound[2], COLOR.phase.liquid, COLOR.component[1]])].map((c) => (
             <marker key={c} id={`ah${c.slice(1)}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill={c} />
             </marker>

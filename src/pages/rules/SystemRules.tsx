@@ -4,6 +4,7 @@ import { cel, solidColor, toC } from '../../core/colors';
 import type { Comp } from '../../core/types';
 import { entropyLiq, entropySol, gibbsDuhem } from '../../math/curves';
 import { fmtNum } from '../../math/linalg';
+import { effectiveComponents, phaseRule } from '../../math/phaseRule';
 import { analyzeReaction, reactionThermo } from '../../math/reaction';
 import { invariantAnalyses, scheilOf } from '../../state/derived';
 import { useStore } from '../../state/store';
@@ -13,6 +14,7 @@ import { XYPlot } from '../../viz/XYPlot';
 import { Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
 import { Chip } from '../../ui/controls';
 import { Layers5 } from './RulesPage';
+import { COLOR } from '../../ui/tokens';
 
 // ===================================================================== 结晶路径与终点
 export function PathRule() {
@@ -43,7 +45,7 @@ export function PathRule() {
               {(m) => (
                 <>
                   {facets.map((t, k) => (
-                    <polygon key={k} points={t.map((si) => m.px(d.solids[si].n).join(',')).join(' ')} fill="none" stroke="#0072bd" strokeDasharray="4 3" strokeWidth={0.9} />
+                    <polygon key={k} points={t.map((si) => m.px(d.solids[si].n).join(',')).join(' ')} fill="none" stroke={COLOR.accent} strokeDasharray="4 3" strokeWidth={0.9} />
                   ))}
                   {tri && <polygon points={tri.map((si) => m.px(d.solids[si].n).join(',')).join(' ')} className="tri-fill" />}
                   <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke="#7e2f8e" strokeWidth={2.6} />
@@ -111,7 +113,29 @@ export function PhaseRule() {
   const d = useStore((s) => s.diagram);
   const eq = useStore((s) => s.eq);
   const T = useStore((s) => s.T);
+  const x0 = useStore((s) => s.x0);
+  const xi = useStore((s) => s.xi);
   const [extra, setExtra] = useState<number[]>([]);
+  const rule = phaseRule(d, eq, x0, xi >= 0);
+  // 有效组元数演示：当前 x₀、A–B 边中点、顶点 A、以及稳定固相两两连线的中点
+  const demo = useMemo(() => {
+    const sym = d.params.components.map((c) => c.symbol);
+    const pts: { name: string; x: Comp }[] = [
+      { name: '当前 x₀', x: x0 },
+      { name: `${sym[0]}–${sym[1]} 边中点`, x: [0.5, 0.5, 0] },
+      { name: `顶点 ${sym[0]}`, x: [1, 0, 0] },
+    ];
+    const stable = d.solids.filter((s) => s.kind === 'element' || (s.kind !== 'solution' && d.topo.compounds.find((c) => c.si === s.index)?.congruent));
+    for (let a = 0; a < stable.length; a++)
+      for (let b = a + 1; b < stable.length; b++) {
+        const x = stable[a].n.map((v, i) => (v + stable[b].n[i]) / 2) as Comp;
+        if (x.every((v) => v > 1e-9)) pts.push({ name: `${stable[a].label}–${stable[b].label} 连线中点`, x });
+      }
+    return pts.map((p) => {
+      const e = d.equilibrium(p.x, T);
+      return { ...p, e, r: phaseRule(d, e, p.x), c: effectiveComponents(d, p.x, e) };
+    });
+  }, [d, x0, T]);
   const base = eq.phases.map((p) => ({ label: p.id, x: p.x, S: p.si < 0 ? entropyLiq(d.th, p.x, T) : entropySol(d.th, p.si) }));
   const add = extra.filter((si) => !eq.phases.some((p) => p.si === si)).map((si) => ({ label: d.solids[si].id, x: d.solids[si].n, S: entropySol(d.th, si, d.solids[si].n, T) }));
   const all = [...base, ...add];
@@ -128,9 +152,29 @@ export function PhaseRule() {
               ['未知量 (dT, dμ_A, dμ_B, dμ_C)', <span className="mono">C + 1 = 4</span>],
               ['rank G', <span className="mono">{gd.rank}</span>],
               ['F = dim ker G = 4 − rank G', <b className="mono">{gd.F}</b>],
-              ['相律公式 C + 1 − P', <span className="mono">{4 - all.length}</span>],
+              ['相律公式 C + 1 − P（名义 C = 3）', <span className="mono">{3 + 1 - all.length}</span>],
+              ['有效组元数 C（当前 x₀）', <b className="mono" title={rule.reason || undefined}>{rule.C}</b>],
+              ['F = C − P + 1（有效）', <b className="mono">{rule.F}{xi >= 0 ? '（平台）' : ''}</b>],
             ]}
           />
+          {rule.reason && <div className="callout">{rule.reason}。</div>}
+          <div className="sublabel">有效组元数演示（当前 T 下各成分的平衡与相律）</div>
+          <table className="grid">
+            <thead>
+              <tr><th>成分</th><th>平衡相</th><th>P</th><th>C</th><th>F</th></tr>
+            </thead>
+            <tbody>
+              {demo.map((r) => (
+                <tr key={r.name}>
+                  <td>{r.name}</td>
+                  <td className="mono">{r.e.key}</td>
+                  <td className="mono">{r.r.P}</td>
+                  <td className="mono">{r.r.C}</td>
+                  <td className="mono">{r.r.F}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           <div className="sublabel">假想地再加入固相（检验 P 增大时 F 如何变化）</div>
           <div className="chips">
             {d.solids.map((s) => (
@@ -140,12 +184,12 @@ export function PhaseRule() {
             ))}
           </div>
           {all.length > 4 && <div className="callout err">P = {all.length} &gt; C + 1：方程个数超过未知量，非零解只在额外的退化条件下存在 —— 一般情况下这么多相不能共存。</div>}
-          {gd.F !== 4 - all.length && all.length <= 4 && <div className="callout warn">rank G &lt; P：行线性相关（相成分或熵退化），F 大于公式值。</div>}
+          {gd.F !== 3 + 1 - all.length && all.length <= 4 && <div className="callout warn">rank G &lt; P：行线性相关（相成分或熵退化），F 大于公式值。</div>}
         </Panel>
         <Layers5
           def={
             <>
-              <p>C 组元、P 相平衡体系的独立强度变量数 F = C − P + 2；恒压凝聚体系 F = C − P + 1（三元：F = 4 − P）。</p>
+              <p>C 组元、P 相平衡体系的独立强度变量数 F = C − P + 2；恒压凝聚体系 F = C − P + 1。三元一般成分 C = 3；若 x₀ 在边上（某组元含量为 0）C = 2，在顶点上 C = 1；x₀ 与平衡相恰在两个稳定固相的连线（伪二元截面）上时，C 同样降为 2。</p>
               <p className="note"><Prov k="assume" /> 各相均为体相（忽略界面）；平衡；每相的 Gibbs–Duhem 方程线性无关。</p>
             </>
           }
@@ -161,7 +205,7 @@ export function PhaseRule() {
           phys={<p>F 是"可以独立改变而不破坏相组合"的强度变量个数：单相区 F = 3（T 与两个成分），两相区 F = 2，三相（界线）F = 1，四相（不变点）F = 0。</p>}
           verify={
             <>
-              <p>• 在全局条中改变 T 或成分，使平衡态跨越不同相区：rank 与 F 同步变化，且总与 4 − P 相等。</p>
+              <p>• 在全局条中改变 T 或成分，使平衡态跨越不同相区：rank 与 F 同步变化，且总与名义值 C + 1 − P（C = 3）相等；把 x₀ 移到边上或伪二元连线上，上表中的有效 C 与 F 随之降低。</p>
               <div className="callout warn">
                 <b>例外：</b>行相关时（例如液相恰好落在两固相连线上，且熵也满足同一线性关系 —— 一致熔融化合物恰在其熔点）rank 降低，此时出现"多一个自由度"的退化情形（拟二元）。
                 Alkemade 极大点处 rank 不降，但零空间的 dT 分量为零 —— 自由度还在，只是不能沿温度方向用。
@@ -219,7 +263,7 @@ export function InvariantRule() {
                 )}
               </TernaryPlot>
             </div>
-            <MatrixView name="N" M={rx.N} rowLabels={d.params.components.map((c) => c.symbol)} colLabels={phases.map((p) => p.label)} colColors={['#3a78b5', ...cur.iv.solids.map(solidColor)]} digits={4} />
+            <MatrixView name="N" M={rx.N} rowLabels={d.params.components.map((c) => c.symbol)} colLabels={phases.map((p) => p.label)} colColors={[COLOR.phase.liquid, ...cur.iv.solids.map(solidColor)]} digits={4} />
             <KV
               rows={[
                 ['rank N / dim ker N', <span className="mono">{rx.rank} / {rx.nullDim}</span>],
@@ -238,7 +282,7 @@ export function InvariantRule() {
           </Panel>
           {rt && (
             <Panel title="反应吉布斯能 ΔG_r(T)（相成分固定）" prov="model">
-              <XYPlot height={180} series={[{ id: 'g', pts: dG, color: '#0072bd', label: 'ΔG_r = Σ νᵢ Gᵢ(T)' }]} xlabel="T / °C" ylabel="ΔG_r / (J·mol⁻¹)" hlines={[{ y: 0 }]} vlines={[{ x: toC(Ts), label: `${cur.iv.label}` }]} />
+              <XYPlot height={180} series={[{ id: 'g', pts: dG, color: COLOR.accent, label: 'ΔG_r = Σ νᵢ Gᵢ(T)' }]} xlabel="T / °C" ylabel="ΔG_r / (J·mol⁻¹)" hlines={[{ y: 0 }]} vlines={[{ x: toC(Ts), label: `${cur.iv.label}` }]} />
               <KV
                 rows={[
                   ['ΔH_r（每摩尔液相）', <span className="mono">{fmtNum(rt.dH, 2)} J/mol</span>],

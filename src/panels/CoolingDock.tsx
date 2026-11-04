@@ -4,6 +4,7 @@ import { cel, phaseColor, toC } from '../core/colors';
 import { useStore } from '../state/store';
 import { useSize } from '../ui/useSize';
 import { Segmented } from '../ui/controls';
+import { COLOR } from '../ui/tokens';
 
 /** 播放循环：按样本下标推进；不变反应平台内放慢，便于观察反应进程。 */
 export function usePlayback() {
@@ -79,7 +80,7 @@ function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.stroke();
   // 已走过部分高亮
   const cur = S[Math.min(S.length - 1, Math.round(idx))];
-  ctx.strokeStyle = '#0072BD';
+  ctx.strokeStyle = COLOR.accent;
   ctx.lineWidth = 2.6;
   ctx.beginPath();
   for (let i = 0; i <= Math.min(S.length - 1, Math.round(idx)); i++) {
@@ -93,7 +94,7 @@ function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number) {
     if (e.kind === 'end') return;
     const sx = X(e.t);
     const sy = Y(e.T);
-    ctx.fillStyle = e.plateau ? '#D95319' : '#0072BD';
+    ctx.fillStyle = e.plateau ? COLOR.component[0] : COLOR.accent;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.beginPath();

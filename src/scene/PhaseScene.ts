@@ -15,6 +15,7 @@ import type { Trace } from '../core/cooling';
 import type { Comp, Equilibrium } from '../core/types';
 import { lerpComp, type VerticalSpec } from '../core/vertical';
 import type { Layers, Selection } from '../state/store';
+import { COLOR, hexNum } from '../ui/tokens';
 
 /** 世界坐标：成分三角形位于 XZ 平面（A 左前、B 右前、C 后），温度映射到 Y。 */
 const HEIGHT0 = 1.12;
@@ -552,7 +553,7 @@ export class PhaseScene {
     for (const iv of d.topo.invariants) {
       if (iv.rank !== 'binary') continue;
       const p = this.W(iv.x, iv.T);
-      const s = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), new THREE.MeshBasicMaterial({ color: iv.reaction.type === 'eutectic' ? 0x0072bd : 0xa2142f }));
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), new THREE.MeshBasicMaterial({ color: hexNum(iv.reaction.type === 'eutectic' ? COLOR.point.eutectic : COLOR.point.peritectic) }));
       s.position.copy(p);
       g.add(s);
       const out = new V3(p.x, 0, p.z).normalize().multiplyScalar(0.035);
@@ -650,7 +651,7 @@ export class PhaseScene {
 
   private buildCurves(g: THREE.Group, arrows: THREE.Group) {
     const d = this.d!;
-    const colOf = { eutectic: 0x1d2229, transition: 0xd95319, peritectic: 0xc00000 } as const;
+    const colOf = { eutectic: hexNum(COLOR.line.eutectic), transition: hexNum(COLOR.line.transition), peritectic: hexNum(COLOR.line.peritectic) } as const;
     const coneGeo = new THREE.ConeGeometry(0.014, 0.04, 14);
     coneGeo.rotateX(Math.PI / 2); // 尖端指向 +Z
     for (const cv of d.topo.curves) {
@@ -693,7 +694,7 @@ export class PhaseScene {
     const d = this.d!;
     for (const iv of d.topo.invariants) {
       if (iv.rank !== 'ternary') continue;
-      const col = iv.reaction.type === 'eutectic' ? 0x0072bd : iv.reaction.type === 'transition' ? 0xd95319 : 0xa2142f;
+      const col = hexNum(COLOR.point[iv.reaction.type]);
       const p = this.W(iv.x, iv.T);
       const s = new THREE.Mesh(new THREE.SphereGeometry(0.02, 18, 14), new THREE.MeshBasicMaterial({ color: col, clippingPlanes: [this.cutPlane] }));
       s.position.copy(p);
@@ -781,11 +782,11 @@ export class PhaseScene {
     this.isoMesh.renderOrder = 3;
     this.dyn.add(this.isoMesh);
     // 外框
-    const outline = this.mkLine([new V3(-0.5, 0, H0), new V3(0.5, 0, H0), new V3(0, 0, H0 - SQRT3_2), new V3(-0.5, 0, H0)], 0x0072bd, 2);
+    const outline = this.mkLine([new V3(-0.5, 0, H0), new V3(0.5, 0, H0), new V3(0, 0, H0 - SQRT3_2), new V3(-0.5, 0, H0)], hexNum(COLOR.accent), 2);
     outline.name = 'isoOutline';
     this.isoMesh.add(outline);
     // T 手柄
-    const h = new THREE.Mesh(new THREE.SphereGeometry(0.028, 18, 14), new THREE.MeshBasicMaterial({ color: 0x0072bd }));
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.028, 18, 14), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.accent) }));
     h.renderOrder = 6;
     this.isoMesh.add(h);
     h.position.set(0.5, 0, H0);
@@ -975,7 +976,7 @@ export class PhaseScene {
     if (!s.vertOn) return;
     const a = this.W(spec.p1, s.T).add(new V3(0, 0.001, 0));
     const b = this.W(spec.p2, s.T).add(new V3(0, 0.001, 0));
-    this.vTLine = this.mkLine([a, b], 0x0072bd, 1.8, { dashed: true });
+    this.vTLine = this.mkLine([a, b], hexNum(COLOR.accent), 1.8, { dashed: true });
     this.dyn.add(this.vTLine);
   }
 
@@ -1044,10 +1045,10 @@ export class PhaseScene {
         all.push(w);
         if (q.t <= cur.t + 1e-9) done.push(w);
       }
-      if (all.length > 1) this.pathGroup.add(this.mkLine(all, 0x7e2f8e, 1.4, { dashed: true, opacity: 0.55 }));
-      if (done.length > 1) this.pathGroup.add(this.mkLine(done, 0x7e2f8e, 3));
+      if (all.length > 1) this.pathGroup.add(this.mkLine(all, hexNum(COLOR.path), 1.4, { dashed: true, opacity: 0.55 }));
+      if (done.length > 1) this.pathGroup.add(this.mkLine(done, hexNum(COLOR.path), 3));
       if (done.length) {
-        const m = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 10), new THREE.MeshBasicMaterial({ color: 0x7e2f8e, depthTest: false }));
+        const m = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 10), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.path), depthTest: false }));
         m.position.copy(done[done.length - 1]);
         m.renderOrder = 5;
         this.pathGroup.add(m);

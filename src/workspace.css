@@ -104,7 +104,7 @@
 }
 .tchecks input {
   margin: 0;
-  accent-color: #0072bd;
+  accent-color: var(--accent);
 }
 .tdrop {
   position: relative;
@@ -286,7 +286,7 @@
   color: #fff;
 }
 .modebar.comp .mb-tag {
-  background: #0072bd;
+  background: var(--accent);
 }
 .modebar.cool .mb-tag {
   background: #7e2f8e;
@@ -338,7 +338,7 @@
   background: #fff;
   color: #1f4e79;
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 #0072bd;
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 .insp-tabs button:hover:not(.on) {
   background: var(--tbtn-hover);
@@ -435,7 +435,8 @@
 }
 .wsx .vp-legend {
   border-radius: 0;
-  border: 1px solid #1d2229;
+  border: 0;
+  border-left: 1px solid #1d2229;
   font-family: var(--axes-font);
   font-size: 11px;
   background: rgba(255, 255, 255, 0.96);

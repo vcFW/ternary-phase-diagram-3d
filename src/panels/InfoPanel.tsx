@@ -82,7 +82,7 @@ export function InfoPanel() {
     detail = (
       <div className="info-card">
         <h4>{regionName(sel.key)}</h4>
-        <p>共存相：{ids.map((i) => (i === 'L' ? '液相 L' : `固相 ${i}`)).join('、')}；相数 P = {ids.length}，自由度 F = {4 - ids.length}。</p>
+        <p>共存相：{ids.map((i) => (i === 'L' ? '液相 L' : `固相 ${i}`)).join('、')}；相数 P = {ids.length}，一般成分（C = 3）下自由度 F = {Math.max(0, 3 - ids.length + 1)}。</p>
         <p>{ids.length === 1 ? '单相区：成分与温度都可独立变化。' : ids.length === 2 ? '两相区：连结线上的相成分由杠杆规则决定。' : '三相区：连结三角形，三相成分被固定在三角形顶点，F = 1。'}</p>
       </div>
     );

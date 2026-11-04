@@ -5,6 +5,7 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
 import { Derivation, Eq, KV, M, Panel } from '../../viz/MathView';
+import { COLOR } from '../../ui/tokens';
 
 /**
  * 温度与相稳定性：均匀液相 x₀ 对每个固相的析出驱动力
@@ -81,7 +82,7 @@ export function StabilitySection() {
             <XYPlot
               height={220}
               series={[
-                { id: 'L', pts: data.gL, color: '#3a78b5', label: 'G_L(x₀, T)：强制保持均匀液相' },
+                { id: 'L', pts: data.gL, color: COLOR.phase.liquid, label: 'G_L(x₀, T)：强制保持均匀液相' },
                 { id: 'E', pts: data.gE, color: '#c00000', dash: '5 3', label: 'G_eq(T)：最小化后的平衡态' },
               ]}
               xlabel="T / °C"

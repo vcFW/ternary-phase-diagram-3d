@@ -6,6 +6,7 @@ import type { IsoSection } from './isothermal';
 import type { Trace } from './cooling';
 import type { Comp, ReactionType } from './types';
 import { uOfPoint, type VerticalRaster, type VerticalSpec } from './vertical';
+import { COLOR } from '../ui/tokens';
 
 /** 画布绘制：二维视图与三维平面纹理共用，保证"同源"。 */
 export interface Theme {
@@ -709,7 +710,7 @@ export function drawProjection(
   if (o.invariants) {
     for (const iv of d.topo.invariants) {
       const p = L.px(iv.x);
-      const col = iv.reaction.type === 'eutectic' ? '#0072BD' : iv.reaction.type === 'transition' ? '#D95319' : '#A2142F';
+      const col = COLOR.point[iv.reaction.type === 'eutectic' ? 'eutectic' : iv.reaction.type === 'transition' ? 'transition' : 'peritectic'];
       ctx.fillStyle = col;
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;

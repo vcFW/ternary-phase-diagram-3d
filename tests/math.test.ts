@@ -118,7 +118,7 @@ describe.each(diagrams)('数学层 · $p.id', ({ d }) => {
       const T = Tmin + r() * (Tmax - Tmin);
       const eq = d.equilibrium(x, T);
       const gd = gibbsDuhemOfEq(d.th, eq.phases, T);
-      expect(gd.F).toBe(eq.dof);
+      expect(gd.F).toBe(3 - eq.phases.length + 1);
     }
   });
 

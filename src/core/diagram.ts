@@ -176,7 +176,7 @@ export class PhaseDiagram {
       const sum = phases.reduce((s, p) => s + p.frac, 0);
       phases.forEach((p) => (p.frac /= sum));
       phases.sort((p, q) => p.si - q.si);
-      return { phases, key: phases.map((p) => p.id).join('+'), dof: 4 - phases.length, G };
+      return { phases, key: phases.map((p) => p.id).join('+'), G };
     };
     if (T >= liq) return mk([{ si: -1, id: 'L', frac: 1, x: x0 }], th.Gliq(x0, T));
 

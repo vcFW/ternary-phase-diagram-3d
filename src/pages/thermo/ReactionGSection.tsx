@@ -6,8 +6,9 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
 import { Eq, M, Panel, Prov } from '../../viz/MathView';
+import { COLOR, SERIES } from '../../ui/tokens';
 
-const PAL = ['#0072bd', '#d95319', '#77ac30', '#7e2f8e', '#edb120', '#4dbeee', '#a2142f'];
+const PAL: readonly string[] = SERIES;
 
 /**
  * 两种常被混用的"自由能图"：
@@ -38,7 +39,7 @@ export function ReactionGSection() {
       const x: [number, number, number] = [(1 - t) * (x0[0] + x0[1]), t * (x0[0] + x0[1]), x0[2]];
       pts.push([t, d.th.Gliq(x, T) / 1000]);
     }
-    return [{ id: 'g', pts, color: '#3a78b5', label: `G_L(x, T) 沿 x_C = ${x0[2].toFixed(2)} 的截线` }];
+    return [{ id: 'g', pts, color: COLOR.phase.liquid, label: `G_L(x, T) 沿 x_C = ${x0[2].toFixed(2)} 的截线` }];
   }, [d, x0, T]);
   return (
     <>
