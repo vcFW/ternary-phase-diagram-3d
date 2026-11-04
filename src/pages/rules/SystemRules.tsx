@@ -223,6 +223,8 @@ export function PhaseRule() {
 export function InvariantRule() {
   const d = useStore((s) => s.diagram);
   const setT = useStore((s) => s.setT);
+  const presetId = useStore((s) => s.presetId);
+  const loadPreset = useStore((s) => s.loadPreset);
   const all = invariantAnalyses(d).filter((a) => a.iv.rank === 'ternary');
   const [pick, setPick] = useState<{ uid: number; k: number } | null>(null);
   const k = pick && pick.uid === d.uid ? Math.min(pick.k, all.length - 1) : 0;
@@ -239,6 +241,12 @@ export function InvariantRule() {
   return (
     <>
       <PageTitle title="不变点与反应分类" desc="反应系数 = 成分矩阵的零空间；但守恒只回答“允许什么”，平衡与方向需要热力学。" />
+      <div className="chips" style={{ marginBottom: 8 }}>
+        <span className="sublabel">一键载入三类不变点的实例：</span>
+        <Chip active={presetId === 'simple-eutectic'} onClick={() => loadPreset('simple-eutectic')} title="三元共晶点 E：L → α + β + γ（反应系数全正）">共晶点 E · 简单三元共晶</Chip>
+        <Chip active={presetId === 'ternary-incongruent'} onClick={() => loadPreset('ternary-incongruent')} title="过渡点 U：L + α ⇌ β + γ（一个负号）">过渡点 U · 三元不稳定化合物</Chip>
+        <Chip active={presetId === 'ternary-peritectic'} onClick={() => loadPreset('ternary-peritectic')} title="三元包晶点 P：L + α + β ⇌ γ（两个负号）">包晶点 P · 三元包晶体系</Chip>
+      </div>
       <div className="cols c2">
         <div className="stack">
           <Panel
