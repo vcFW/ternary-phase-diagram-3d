@@ -11,7 +11,8 @@
     "typecheck": "tsc -b --noEmit",
     "e2e": "playwright test",
     "e2e:update": "playwright test --update-snapshots",
-    "gen:tokens": "vite-node scripts/gen-tokens.ts"
+    "gen:tokens": "vite-node scripts/gen-tokens.ts",
+    "test:perf": "PERF_STRICT=1 vitest run tests/perf.test.ts tests/topology.test.ts tests/zpf.test.ts tests/vertical.test.ts --no-file-parallelism"
   },
   "dependencies": {
     "comlink": "^4.4.2",

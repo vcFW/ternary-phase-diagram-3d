@@ -43,6 +43,7 @@ describe('拓扑提取性能', () => {
       new PhaseDiagram(params);
       best = Math.min(best, performance.now() - t);
     }
-    expect(best).toBeLessThan(250);
+    // 并行跑测试时放宽 5 倍；`npm run test:perf` 串行严格阈值
+    expect(best).toBeLessThan(250 * (process.env.PERF_STRICT ? 1 : 5));
   });
 });

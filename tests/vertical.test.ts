@@ -28,6 +28,6 @@ describe('垂直截面：相界折线', () => {
     verticalRaster(d, spec, 160, 40, Tmin, Tmax); // 预热
     const t = performance.now();
     verticalRaster(d, { p1: [0.25, 0.75, 0] as Comp, p2: [0.25, 0, 0.75] as Comp }, 640, 120, Tmin, Tmax);
-    expect(performance.now() - t).toBeLessThan(1000);
+    expect(performance.now() - t).toBeLessThan(1000 * (process.env.PERF_STRICT ? 1 : 3));
   });
 });
