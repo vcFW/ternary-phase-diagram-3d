@@ -64,21 +64,26 @@ function useUrlSync() {
 
 export function AppShell() {
   const route = useRoute();
+  // 导航：用户选择优先；否则 < 1280 px 默认收起
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      return localStorage.getItem('nav-collapsed') === '1';
+      const v = localStorage.getItem('nav-collapsed');
+      if (v !== null) return v === '1';
     } catch {
-      return false;
+      /* 存储不可用 */
     }
+    return window.innerWidth < 1280;
   });
   useUrlSync();
-  useEffect(() => {
+  const toggleNav = () => {
+    const next = !collapsed;
+    setCollapsed(next);
     try {
-      localStorage.setItem('nav-collapsed', collapsed ? '1' : '0');
+      localStorage.setItem('nav-collapsed', next ? '1' : '0'); // 只记录用户的显式选择
     } catch {
       /* 存储不可用时忽略 */
     }
-  }, [collapsed]);
+  };
   const computing = useStore((s) => s.computing);
   const Page = pages[route.page];
   const cur = NAV.find((n) => n.id === route.page)!;
@@ -128,7 +133,7 @@ export function AppShell() {
           ))}
         </ul>
         <div className="grow" />
-        <button className="nav-collapse" onClick={() => setCollapsed(!collapsed)} title={collapsed ? '展开导航' : '收起导航'}>
+        <button className="nav-collapse" onClick={toggleNav} title={collapsed ? '展开导航' : '收起导航'}>
           {collapsed ? '»' : '« 收起'}
         </button>
       </nav>

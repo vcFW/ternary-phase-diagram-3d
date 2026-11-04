@@ -3,7 +3,7 @@ import { regionName, solidColor, toC, toK } from '../core/colors';
 import { getPreset, PRESETS } from '../core/presets';
 import { phaseRule, phaseRuleText } from '../math/phaseRule';
 import { useStore } from '../state/store';
-import { NumField, SliderRow } from '../ui/controls';
+import { Drop, NumField, SliderRow } from '../ui/controls';
 
 /**
  * 全局控制条：只放"所有页面共享的物理状态"——体系、总成分、温度、热力学参数。
@@ -62,10 +62,12 @@ export function GlobalBar({ page }: { page: string }) {
       </label>
       <div className="gbar-mode" role="tablist" aria-label="交互模式">
         <button className={mode === 'composition' ? 'on' : ''} onClick={() => setMode('composition')} title="成分探索：改变总成分 x₀，温度作为参数">
-          成分探索
+          <span className="gb-full">成分探索</span>
+          <span className="gb-short">探索</span>
         </button>
         <button className={mode === 'cooling' ? 'on' : ''} onClick={() => setMode('cooling')} title="冷却凝固：x₀ 固定，只改变温度，观察液相成分与相分数的演化">
-          冷却凝固
+          <span className="gb-full">冷却凝固</span>
+          <span className="gb-short">冷却</span>
         </button>
       </div>
       <div className={`gbar-field comp ${mode === 'cooling' ? 'locked' : ''}`} title={mode === 'cooling' ? '冷却凝固模式：总成分固定（封闭体系）；切换到"成分探索"才能修改' : undefined}>
@@ -83,21 +85,41 @@ export function GlobalBar({ page }: { page: string }) {
         <NumField value={toC(T)} min={Math.floor(toC(range.Tmin))} max={Math.ceil(toC(range.Tmax))} step={1} digits={1} width={56} onCommit={(v) => setT(toK(v))} />
         <span className="dim">°C</span>
       </div>
+      {/* 状态读数：≥1440 完整；1280–1439 缩写；<1280 折叠为可点击徽章（点击弹出详情） */}
       <div className="gbar-state" title="当前总成分与温度下的平衡相组合（PhaseDiagram 模型计算）">
-        <b>{regionName(eq.key).replace(/^.*?：/, '')}</b>
+        <b>
+          <span className="gb-full">{regionName(eq.key).replace(/^.*?：/, '')}</span>
+          <span className="gb-short">{eq.key}</span>
+        </b>
         <span className="mono" title={rule.reason || undefined}>{phaseRuleText(rule)}</span>
         {eq.warning && <span className="warn-badge" title={eq.warning}>⚠ 求解未完全收敛</span>}
       </div>
+      <Drop className="gbtn gbar-badge" panelClass="gbar-panel" title="当前平衡态读数（点击查看详情）" label={<span className="mono">{eq.key} · F{rule.F}</span>}>
+        <div className="gbar-detail">
+          <b>{regionName(eq.key)}</b>
+          <span className="mono">{phaseRuleText(rule)}</span>
+          {rule.reason && <span className="small">{rule.reason}</span>}
+          {eq.warning && <span className="warn-badge">⚠ {eq.warning}</span>}
+        </div>
+      </Drop>
       <div className="grow" />
       <span className="gbar-tag" title="全部参数为假想组元的示意值，不代表任何真实材料">示意模型 · 非真实材料数据</span>
+      <Drop className="gbtn gbar-more" panelClass="gbar-panel" title="更多" label="⋯">
+        <div className="gbar-detail">
+          <span className="gbar-tag static">示意模型 · 非真实材料数据</span>
+          <span className="small">全部参数为假想组元的示意值，不代表任何真实材料。</span>
+        </div>
+      </Drop>
       <div className="gbar-pop">
         <button className={`gbtn ${paramsOpen ? 'on' : ''}`} onClick={() => setParamsOpen(!paramsOpen)}>
-          热力学参数
+          <span className="gb-full">热力学参数</span>
+          <span className="gb-short">参数</span>
         </button>
         {paramsOpen && <ParamsPopover onClose={() => setParamsOpen(false)} />}
       </div>
       <button className="gbtn" onClick={copy} title="复制包含当前页面与物理状态的深链接">
-        {copied ? '已复制' : '复制链接'}
+        <span className="gb-full">{copied ? '已复制' : '复制链接'}</span>
+        <span className="gb-short">{copied ? '✓' : '链接'}</span>
       </button>
       {notice && showNotice && <div className="gbar-notice" onClick={() => setShowNotice(false)}>{notice.text}</div>}
     </header>

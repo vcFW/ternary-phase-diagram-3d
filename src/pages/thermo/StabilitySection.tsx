@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { cel, solidColor, toC, toK } from '../../core/colors';
 import { fmtNum } from '../../math/linalg';
+import { StabilityPanel } from '../../panels/PointPanels';
+import { usePointAnalysis } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
@@ -17,6 +19,7 @@ export function StabilitySection() {
   const x0 = useStore((s) => s.x0);
   const T = useStore((s) => s.T);
   const setT = useStore((s) => s.setT);
+  const an = usePointAnalysis();
   const th = d.th;
   const { Tmin, Tmax } = d.tRange();
   const data = useMemo(() => {
@@ -77,6 +80,9 @@ export function StabilitySection() {
               </tbody>
             </table>
             <p className="note">点击图可设置全局温度。驱动力按"每摩尔原子的固相"计。</p>
+          </Panel>
+          <Panel title="平衡解是否为全局最小（与工作台检查器同源）" prov="model">
+            {an ? <StabilityPanel an={an} /> : <p className="dim">计算中…</p>}
           </Panel>
           <Panel title="均匀液相 vs 平衡态的总吉布斯能" prov="model">
             <XYPlot

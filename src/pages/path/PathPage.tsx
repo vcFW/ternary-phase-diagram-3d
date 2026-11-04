@@ -7,7 +7,8 @@ import { fmtNum } from '../../math/linalg';
 import { phaseRule, phaseRuleText } from '../../math/phaseRule';
 import { CoolingTransport } from '../../panels/CoolingTransport';
 import { useScheil } from '../../state/asyncCompute';
-import { invariantAnalyses } from '../../state/derived';
+import { EvolutionPanel } from '../../panels/PointPanels';
+import { invariantAnalyses, usePointAnalysis } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { AnalysisLayout, PageTitle, useSection, type Section } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
@@ -63,6 +64,7 @@ function EquilibriumSection() {
   const res = conservationResidual(eq.phases, x0);
   const rule = phaseRule(d, eq, x0, xi >= 0);
   const inv = invariantAnalyses(d);
+  const an = usePointAnalysis();
   const tNow = cur?.t ?? 0;
   const evLines = trace.events.map((e) => ({ x: e.t, color: e.plateau ? COLOR.stateX0 : COLOR.muted }));
   return (
@@ -118,6 +120,9 @@ function EquilibriumSection() {
             <XYPlot height={190} series={fs} ylim={[0, 1]} xlim={[0, 100]} ylabel="相分数 f" vlines={[...evLines, { x: tNow, color: COLOR.stateX0, dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
             <XYPlot height={160} series={Tc} xlim={[0, 100]} ylabel="T / °C" vlines={[{ x: tNow, color: COLOR.stateX0, dash: '' }]} legend={false} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
             <XYPlot height={160} series={xl} xlim={[0, 100]} ylim={[0, 1]} xlabel="放热进度 t" ylabel="x_L" vlines={[{ x: tNow, color: COLOR.stateX0, dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+          </Panel>
+          <Panel title="演化：冷却与成分探索（与工作台检查器同源）" prov="model">
+            {an ? <EvolutionPanel an={an} /> : <p className="dim">计算中…</p>}
           </Panel>
           <Panel title="事件与每一步的数学 / 热力学条件" prov="model">
             <ol className="ev-list">

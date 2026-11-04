@@ -92,6 +92,8 @@ function defaultT(d: PhaseDiagram, x: Comp): number {
 
 export interface AppState {
   /** 含固溶体的体系在 Worker 中构建期间为 true；此时界面仍显示旧图 */
+  /** 成分探索中 x₀ 的移动历史（含当时的 G 与相分数），供“演化”面板与 x₀ 轨迹叠加层使用 */
+  history: { x: Comp; G: number; f: Record<string, number> }[];
   computing: boolean;
   /** 正在构建的目标体系（顶栏选择器显示用） */
   pendingPreset: string | null;
@@ -262,6 +264,7 @@ export const useStore = create<AppState>((set, get) => {
   };
 
   return {
+  history: [],
   computing: false,
   pendingPreset: null,
   asyncTick: 0,
@@ -431,3 +434,17 @@ export const useStore = create<AppState>((set, get) => {
 export function currentSpec(s: AppState) {
   return resolveSection(s.section, s.diagram, s.x0);
 }
+
+// 成分探索：记录 x₀ 的移动历史（换体系时清空）
+useStore.subscribe((s, p) => {
+  if (s.diagram.uid !== p.diagram.uid) {
+    if (s.history.length) useStore.setState({ history: [] });
+    return;
+  }
+  if (s.mode !== 'composition' || (s.x0 === p.x0 && s.eq === p.eq)) return;
+  const prev = s.history[s.history.length - 1];
+  if (prev && Math.hypot(prev.x[0] - s.x0[0], prev.x[1] - s.x0[1], prev.x[2] - s.x0[2]) < 0.004) return;
+  const f: Record<string, number> = {};
+  for (const ph of s.eq.phases) f[ph.id] = ph.frac;
+  useStore.setState({ history: [...s.history.slice(-79), { x: s.x0, G: s.eq.G, f }] });
+});

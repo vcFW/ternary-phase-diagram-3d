@@ -491,15 +491,15 @@ input {
   position: absolute;
   top: 8px;
   left: 8px;
+  z-index: 3;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   max-width: calc(100% - var(--vp-legend-w) - 16px);
   gap: 0;
   align-items: stretch;
   background: var(--panel);
   border: 1px solid var(--line2);
   border-radius: var(--radius);
-  overflow: hidden;
 }
 .vp-toolbar button {
   white-space: nowrap;
@@ -1019,4 +1019,78 @@ input {
   font-size: var(--fs-xs);
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* 三维图窗：单行图标工具条、温度徽标、标题条上的“?”说明 */
+.vp-ib {
+  width: 30px;
+  height: 26px;
+  padding: 0 !important;
+  display: grid;
+  place-items: center;
+}
+.vp-ib svg {
+  display: block;
+}
+.vp-toolbar .tdrop {
+  display: flex;
+}
+.vp-drop-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  width: 300px;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: 10;
+  background: var(--white);
+  border: 1px solid var(--mfig-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+.vp-tbadge {
+  position: absolute;
+  right: calc(var(--vp-legend-w) + 8px);
+  bottom: 8px;
+  padding: 2px 8px;
+  background: var(--white);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent2);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+}
+.helptip {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line2);
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--dim);
+  cursor: help;
+  background: var(--white);
+}
+.helptip-body {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 20px;
+  width: 300px;
+  padding: 8px 10px;
+  background: var(--white);
+  border: 1px solid var(--mfig-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  color: var(--text);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  z-index: 30;
+}
+.helptip:hover .helptip-body,
+.helptip:focus .helptip-body {
+  display: block;
 }

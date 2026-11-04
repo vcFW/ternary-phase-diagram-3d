@@ -1,12 +1,12 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useDeferredValue, useMemo, type ReactNode } from 'react';
 import { cel } from '../../core/colors';
-import type { Comp } from '../../core/types';
 import { analyzePoint } from '../../math/pointAnalysis';
 import { CoolingTransport } from '../../panels/CoolingTransport';
 import { ExamplesCard, SectionCard } from '../../panels/Sidebar';
 import { VerticalView } from '../../panels/VerticalView';
 import { Viewport3D } from '../../scene/Viewport3D';
 import { OVERLAY_PRESETS, useStore, type Overlays, type View2D } from '../../state/store';
+import { Drop, HelpTip } from '../../ui/controls';
 import { PhaseFigure2D } from './PhaseFigure2D';
 import { Inspector } from './Inspector';
 import { navigate } from '../../app/router';
@@ -57,24 +57,7 @@ export default function WorkspacePage() {
     }
   }, [d, dx, dT, deq, trace]);
 
-  // 成分探索：记录 x₀ 轨迹、G 与相分数（用于"演化"）
-  const [hist, setHist] = useState<{ x: Comp; G: number; f: Record<string, number> }[]>([]);
-  const lastUid = useRef(d.uid);
-  useEffect(() => {
-    if (lastUid.current !== d.uid) {
-      lastUid.current = d.uid;
-      setHist([]);
-      return;
-    }
-    if (mode !== 'composition') return;
-    setHist((h) => {
-      const prev = h[h.length - 1];
-      if (prev && Math.hypot(prev.x[0] - x0[0], prev.x[1] - x0[1], prev.x[2] - x0[2]) < 0.004) return h;
-      const f: Record<string, number> = {};
-      for (const p of eq.phases) f[p.id] = p.frac;
-      return [...h.slice(-79), { x: x0, G: eq.G, f }];
-    });
-  }, [x0, eq, mode, d.uid]);
+  const history = useStore((s) => s.history);
 
   const viewTitle = view === 'iso' ? `等温截面　T = ${cel(T, 1)}` : view === 'proj' ? '液相面投影（等温线间隔 50 K）' : '垂直截面';
   return (
@@ -134,13 +117,21 @@ export default function WorkspacePage() {
               {focus ? '⤡' : '⤢'}
             </button>
           </header>
-          <div className="mfig-body">{view === 'vert' ? <VerticalView /> : <PhaseFigure2D an={an} trail={hist.map((h) => h.x)} />}</div>
+          <div className="mfig-body">{view === 'vert' ? <VerticalView /> : <PhaseFigure2D an={an} trail={history.map((h) => h.x)} />}</div>
         </section>
 
         <section className="mfig fig3d">
           <header className="mfig-title">
             <span className="mfig-no">图 2</span>
             <span>三维相图（x_A, x_B, T）　状态点 = (x₀, T)</span>
+            <span className="grow" />
+            <HelpTip>
+              左键旋转 · 滚轮缩放 · 右键平移
+              <br />
+              拖动<b>蓝色球 / 水平面</b>升降温度 · 拖动<b>红色状态点</b>改变成分
+              <br />
+              拖动<b>深蓝色截面或其端点</b>平移 / 旋转垂直截面 · 单击截面取点
+            </HelpTip>
           </header>
           <div className="mfig-body stage">
             <Viewport3D />
@@ -152,7 +143,7 @@ export default function WorkspacePage() {
             <span className="mfig-no">检查器</span>
             <span>“移动一个点，同时理解几何、数学与物理”</span>
           </header>
-          <Inspector an={an} history={hist} />
+          <Inspector an={an} />
         </aside>
       </div>
       {mode === 'cooling' && <CoolingTransport />}
@@ -200,26 +191,5 @@ function TBtn({ on, onClick, title, children }: { on?: boolean; onClick: () => v
     <button className={`tbtn ${on ? 'on' : ''}`} onClick={onClick} title={title}>
       {children}
     </button>
-  );
-}
-
-function Drop({ label, children }: { label: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener('pointerdown', h);
-    return () => window.removeEventListener('pointerdown', h);
-  }, [open]);
-  return (
-    <div className="tdrop" ref={ref}>
-      <button className={`tbtn ${open ? 'on' : ''}`} onClick={() => setOpen(!open)}>
-        <b>{label} ▾</b>
-      </button>
-      {open && <div className="tdrop-panel">{children}</div>}
-    </div>
   );
 }

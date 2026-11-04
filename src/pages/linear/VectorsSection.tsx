@@ -3,6 +3,8 @@ import { solidColor } from '../../core/colors';
 import type { Comp } from '../../core/types';
 import { det, fmtNum, inverse, matMul, matVec, rank } from '../../math/linalg';
 import { E_MAT, H_MAT, M_LIN } from '../../math/spaces';
+import { GeometryPanel } from '../../panels/PointPanels';
+import { usePointAnalysis } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, Handle, TernaryPlot } from '../../viz/TernaryPlot';
@@ -19,6 +21,7 @@ export function VectorsSection() {
   const d = useStore((s) => s.diagram);
   const x0 = useStore((s) => s.x0);
   const setX0 = useStore((s) => s.setX0);
+  const an = usePointAnalysis();
   const [view, setView] = useState<'affine' | 'heights'>('affine');
   const sym = d.params.components.map((c) => c.symbol);
   const uv1 = matVec(H_MAT, x0);
@@ -100,6 +103,9 @@ export function VectorsSection() {
           </Panel>
         </div>
         <div className="stack">
+          <Panel title="当前状态的向量与连结线（与工作台检查器同源）" prov="model">
+            {an ? <GeometryPanel an={an} /> : <p className="dim">计算中…</p>}
+          </Panel>
           <Panel title="坐标变换矩阵" prov="math" sub="顶点齐次坐标">
             <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>
               <MatrixView name="H" M={H_MAT} colLabels={sym} colColors={[0, 1, 2].map(solidColor)} rowLabels={['u', 'v', '1']} />

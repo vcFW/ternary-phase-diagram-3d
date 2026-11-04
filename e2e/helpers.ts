@@ -2,6 +2,12 @@ import type { Page } from '@playwright/test';
 
 export const PAGES = ['workspace', 'linear', 'rules', 'thermo', 'path', 'lab'] as const;
 export const PRESETS = ['binary-incongruent', 'ss-eutectic'] as const;
+export const SIZES = [
+  { width: 1024, height: 768 },
+  { width: 1280, height: 800 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+] as const;
 export const VIEWPORTS = [
   { width: 1280, height: 800 },
   { width: 1024, height: 768 },
@@ -16,7 +22,7 @@ export async function openPage(page: Page, route: string, preset: string) {
 }
 
 /** 容易溢出的外壳 / 工具条类元素 */
-export const OVERFLOW_SELECTORS = ['.gbar', '.tstrip', '.vp-toolbar', '.vp-hint', '.win-title', '.fig-title'];
+export const OVERFLOW_SELECTORS = ['.gbar', '.tstrip', '.vp-toolbar', '.mfig-title', '.insp-tabs'];
 
 /** 返回 scrollWidth > clientWidth + 2 的元素描述 */
 export async function overflowing(page: Page, selectors = OVERFLOW_SELECTORS): Promise<string[]> {

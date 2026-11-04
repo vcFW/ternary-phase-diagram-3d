@@ -977,7 +977,8 @@ export class PhaseScene {
       l.visible = vis;
     }
     for (const dl of this.detailLabels) dl.l.visible = dl.l.visible && s.selection?.kind === 'compound' && s.selection.si === dl.si;
-    if (this.tLabel) this.tLabel.visible = s.isoOn;
+    // 温度读数改由图窗右下角的徽标显示（避免与温度轴文字重叠）
+    if (this.tLabel) this.tLabel.visible = false;
   }
 
   private updateTLine(s: SceneState, spec: VerticalSpec) {
