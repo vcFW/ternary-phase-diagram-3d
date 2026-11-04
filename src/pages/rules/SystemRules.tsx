@@ -48,10 +48,10 @@ export function PathRule() {
                     <polygon key={k} points={t.map((si) => m.px(d.solids[si].n).join(',')).join(' ')} fill="none" stroke={COLOR.accent} strokeDasharray="4 3" strokeWidth={0.9} />
                   ))}
                   {tri && <polygon points={tri.map((si) => m.px(d.solids[si].n).join(',')).join(' ')} className="tri-fill" />}
-                  <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke="#7e2f8e" strokeWidth={2.6} />
+                  <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke={COLOR.path} strokeWidth={2.6} />
                   {predicted && (() => {
                     const p = m.px(predicted.x);
-                    return <circle cx={p[0]} cy={p[1]} r={8} fill="none" stroke="#c00000" strokeWidth={2} />;
+                    return <circle cx={p[0]} cy={p[1]} r={8} fill="none" stroke={COLOR.stateX0} strokeWidth={2} />;
                   })()}
                   <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀" />
                 </>

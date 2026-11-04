@@ -71,7 +71,7 @@ function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillText('冷却时间（恒定散热功率，任意单位 → 平台长度 ∝ 潜热）', m.l + pw / 2, h - 13);
   // 曲线
   ctx.lineWidth = 1.6;
-  ctx.strokeStyle = '#1d2229';
+  ctx.strokeStyle = COLOR.ink;
   ctx.beginPath();
   S.forEach((s, i) => {
     if (i) ctx.lineTo(X(s.t), Y(s.T));
@@ -95,7 +95,7 @@ function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number) {
     const sx = X(e.t);
     const sy = Y(e.T);
     ctx.fillStyle = e.plateau ? COLOR.component[0] : COLOR.accent;
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = COLOR.white;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
@@ -106,7 +106,7 @@ function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number) {
     haloText(ctx, `${k + 1}`, sx + 7, sy - 3, th);
   });
   // 指针
-  ctx.strokeStyle = '#c00000';
+  ctx.strokeStyle = COLOR.stateX0;
   ctx.lineWidth = 1.6;
   ctx.setLineDash([4, 3]);
   ctx.beginPath();
@@ -114,7 +114,7 @@ function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.lineTo(X(cur.t), m.t + ph);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle = '#c00000';
+  ctx.fillStyle = COLOR.stateX0;
   ctx.beginPath();
   ctx.arc(X(cur.t), Y(cur.T), 5.5, 0, Math.PI * 2);
   ctx.fill();
@@ -164,7 +164,7 @@ function drawFractions(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.textBaseline = 'top';
   ctx.fillText('相分数（摩尔分数，杠杆规则）', m.l + pw / 2, h - 13);
   const cur = S[Math.min(S.length - 1, Math.round(idx))];
-  ctx.strokeStyle = '#c00000';
+  ctx.strokeStyle = COLOR.stateX0;
   ctx.lineWidth = 1.6;
   ctx.setLineDash([4, 3]);
   ctx.beginPath();

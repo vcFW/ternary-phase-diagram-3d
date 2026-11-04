@@ -72,8 +72,8 @@ export function GeometrySection() {
               </TernaryPlot>
             </div>
             <div className="legend-inline">
-              <span><i style={{ background: '#d95319' }} />−∇T_liq（最速降温方向）</span>
-              <span><i style={{ background: '#7b8490' }} />等温线切向（⊥ ∇T）</span>
+              <span><i style={{ background: COLOR.component[0] }} />−∇T_liq（最速降温方向）</span>
+              <span><i style={{ background: COLOR.muted }} />等温线切向（⊥ ∇T）</span>
               <span><i style={{ background: COLOR.accent }} />初晶析出时液相移动方向（背离 {s.label}）</span>
             </div>
             <KV
@@ -125,9 +125,9 @@ export function GeometrySection() {
                       const t: [number, number] = [fr.tCool[0], -fr.tCool[1]];
                       return (
                         <>
-                          <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={2.6} opacity={0.5} />
+                          <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={2.6} opacity={0.5} />
                           <Arrow p={p} q={[p[0] + t[0] * L, p[1] + t[1] * L]} cls="tan" />
-                          <circle cx={p[0]} cy={p[1]} r={4} fill="#7e2f8e" />
+                          <circle cx={p[0]} cy={p[1]} r={4} fill={COLOR.path} />
                         </>
                       );
                     }}
@@ -136,11 +136,11 @@ export function GeometrySection() {
                 <LocalParam label="弧长 s / L" labelWidth={80} value={sFrac} min={0} max={1} step={0.005} digits={3} onChange={setSFrac} />
                 <XYPlot
                   height={170}
-                  series={[{ id: 'T', pts: Tseries, color: '#1d2229', label: 'T(s)：界线温度（三维曲线的高度）' }]}
+                  series={[{ id: 'T', pts: Tseries, color: COLOR.ink, label: 'T(s)：界线温度（三维曲线的高度）' }]}
                   xlabel="弧长 s（单位边长）"
                   ylabel="T / °C"
-                  vlines={[{ x: fr.s, color: '#7e2f8e' }]}
-                  points={[{ x: fr.s, y: toC(fr.T), color: '#7e2f8e' }]}
+                  vlines={[{ x: fr.s, color: COLOR.path }]}
+                  points={[{ x: fr.s, y: toC(fr.T), color: COLOR.path }]}
                   onPick={(x) => setSFrac(Math.max(0, Math.min(1, x / cp.length)))}
                 />
                 <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>

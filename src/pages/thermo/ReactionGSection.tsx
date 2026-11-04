@@ -56,7 +56,7 @@ export function ReactionGSection() {
         </Panel>
         <Panel title="(2) 反应吉布斯能 ΔG_r(T) = Σ νᵢ Gᵢ" prov="model" sub="各不变点反应，相成分固定在不变点处">
           {!inv.length && <p className="dim">该体系没有不变点反应（例如三元匀晶），因此没有可画的 ΔG_r(T)。</p>}
-          <XYPlot height={230} series={series} xlabel="T / °C" ylabel="ΔG_r / (J·mol⁻¹)" hlines={[{ y: 0, color: '#1d2229', dash: '' }]} vlines={inv.map((a) => ({ x: toC(a.iv.T), color: '#7b8490' }))} />
+          <XYPlot height={230} series={series} xlabel="T / °C" ylabel="ΔG_r / (J·mol⁻¹)" hlines={[{ y: 0, color: COLOR.ink, dash: '' }]} vlines={inv.map((a) => ({ x: toC(a.iv.T), color: COLOR.muted }))} />
           <table className="grid">
             <thead>
               <tr>

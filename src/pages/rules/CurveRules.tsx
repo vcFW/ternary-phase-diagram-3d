@@ -65,8 +65,8 @@ export function AlkemadeRule() {
                     <>
                       <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.5} />
                       <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={2} />
-                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={3} opacity={0.6} />
-                      <circle cx={p[0]} cy={p[1]} r={4.5} fill="#7e2f8e" />
+                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={3} opacity={0.6} />
+                      <circle cx={p[0]} cy={p[1]} r={4.5} fill={COLOR.path} />
                     </>
                   );
                 }}
@@ -74,14 +74,14 @@ export function AlkemadeRule() {
             </div>
             <XYPlot
               height={180}
-              series={[{ id: 'T', pts: cp.s.map((v2, k) => [v2, toC(cp.T[k])] as [number, number]), color: '#1d2229', label: 'T(s)' }]}
+              series={[{ id: 'T', pts: cp.s.map((v2, k) => [v2, toC(cp.T[k])] as [number, number]), color: COLOR.ink, label: 'T(s)' }]}
               xlabel="界线弧长 s"
               ylabel="T / °C"
               vlines={[
                 ...(ak.sCross !== null ? [{ x: ak.sCross, color: COLOR.accent, label: '与连线相交' }] : []),
-                ...(ak.sMax !== null ? [{ x: ak.sMax, color: '#c00000', label: '温度极大', dash: '2 2' }] : []),
+                ...(ak.sMax !== null ? [{ x: ak.sMax, color: COLOR.stateX0, label: '温度极大', dash: '2 2' }] : []),
               ]}
-              points={[{ x: s, y: toC(an.frame.T), color: '#7e2f8e' }]}
+              points={[{ x: s, y: toC(an.frame.T), color: COLOR.path }]}
               onPick={(x) => setSFrac(Math.max(0, Math.min(1, x / cp.length)))}
             />
             <LocalParam label="位置 s/L" labelWidth={70} value={s / cp.length} min={0} max={1} step={0.002} digits={3} onChange={setSFrac} />
@@ -197,10 +197,10 @@ export function TangentRule() {
                     <>
                       <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.45} />
                       <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={2.2} />
-                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={3} opacity={0.55} />
-                      {X && <line x1={p[0]} y1={p[1]} x2={X[0]} y2={X[1]} stroke="#7e2f8e" strokeWidth={1.3} strokeDasharray="5 3" />}
+                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={3} opacity={0.55} />
+                      {X && <line x1={p[0]} y1={p[1]} x2={X[0]} y2={X[1]} stroke={COLOR.path} strokeWidth={1.3} strokeDasharray="5 3" />}
                       <Arrow p={p} q={[p[0] + t[0] * 55, p[1] + t[1] * 55]} cls="tan" />
-                      {X && <circle cx={X[0]} cy={X[1]} r={5} fill={ti.kind === 'eutectic' ? '#77ac30' : '#c00000'} stroke="#1d2229" />}
+                      {X && <circle cx={X[0]} cy={X[1]} r={5} fill={ti.kind === 'eutectic' ? COLOR.component[2] : COLOR.stateX0} stroke={COLOR.ink} />}
                       {X && <text x={X[0] + 7} y={X[1] + 14} className="pt-lab">x*（λ = {fmtNum(ti.lambda, 3)}）</text>}
                     </>
                   );
@@ -226,10 +226,10 @@ export function TangentRule() {
           <Panel title="λ 沿界线的变化" prov="model" sub="λ ∈ (0,1)：共晶型；越出：转熔型">
             <XYPlot
               height={170}
-              series={[{ id: 'l', pts: scan, color: '#7e2f8e', label: 'λ(s)' }]}
+              series={[{ id: 'l', pts: scan, color: COLOR.path, label: 'λ(s)' }]}
               ylim={[-1.5, 2.5]}
               hlines={[{ y: 0, color: COLOR.accent, label: 'λ = 0' }, { y: 1, color: COLOR.accent, label: 'λ = 1' }]}
-              vlines={[{ x: s, color: '#7e2f8e' }]}
+              vlines={[{ x: s, color: COLOR.path }]}
               xlabel="界线弧长 s"
               ylabel="λ"
               onPick={(x) => setSFrac(Math.max(0.02, Math.min(0.98, x / cp.length)))}

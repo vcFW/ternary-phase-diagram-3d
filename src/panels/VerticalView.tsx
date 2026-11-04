@@ -81,8 +81,8 @@ export function VerticalView() {
     const foot = [P[0] + u * dx, P[1] + u * dy];
     const off = Math.hypot(X[0] - foot[0], X[1] - foot[1]);
     const px = lay.uToX(Math.min(1, Math.max(0, u)));
-    ctx.strokeStyle = '#1d2229';
-    ctx.fillStyle = off < 2e-3 ? '#c00000' : 'rgba(192,0,0,0)';
+    ctx.strokeStyle = COLOR.ink;
+    ctx.fillStyle = off < 2e-3 ? COLOR.stateX0 : 'rgba(192,0,0,0)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(px, Y, 6, 0, Math.PI * 2);

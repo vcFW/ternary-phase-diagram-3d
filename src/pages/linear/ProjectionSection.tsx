@@ -56,20 +56,20 @@ export function ProjectionSection() {
                 const sl = m.p(x0, Tl);
                 return (
                   <>
-                    <line x1={base[0]} y1={base[1]} x2={top[0]} y2={top[1]} stroke="#7e2f8e" strokeWidth={1.6} strokeDasharray="5 3" />
-                    <circle cx={sl[0]} cy={sl[1]} r={5} fill="#77ac30" stroke="#1d2229" />
-                    <circle cx={s1[0]} cy={s1[1]} r={5} fill="#c00000" stroke="#fff" strokeWidth={1.5} />
-                    <circle cx={s2[0]} cy={s2[1]} r={5} fill={COLOR.accent} stroke="#fff" strokeWidth={1.5} />
-                    <circle cx={base[0]} cy={base[1]} r={4.5} fill="#1d2229" />
-                    <text x={s1[0] + 8} y={s1[1] + 4} className="pt-lab" fill="#c00000">q₁ = (x₀, T)</text>
+                    <line x1={base[0]} y1={base[1]} x2={top[0]} y2={top[1]} stroke={COLOR.path} strokeWidth={1.6} strokeDasharray="5 3" />
+                    <circle cx={sl[0]} cy={sl[1]} r={5} fill={COLOR.component[2]} stroke={COLOR.ink} />
+                    <circle cx={s1[0]} cy={s1[1]} r={5} fill={COLOR.stateX0} stroke={COLOR.white} strokeWidth={1.5} />
+                    <circle cx={s2[0]} cy={s2[1]} r={5} fill={COLOR.accent} stroke={COLOR.white} strokeWidth={1.5} />
+                    <circle cx={base[0]} cy={base[1]} r={4.5} fill={COLOR.ink} />
+                    <text x={s1[0] + 8} y={s1[1] + 4} className="pt-lab" fill={COLOR.stateX0}>q₁ = (x₀, T)</text>
                     <text x={s2[0] + 8} y={s2[1] + 4} className="pt-lab" fill={COLOR.accent}>q₂ = (x₀, T′)</text>
-                    <text x={sl[0] - 8} y={sl[1] - 6} className="pt-lab" fill="#2e6b1f" textAnchor="end">液相面交点</text>
+                    <text x={sl[0] - 8} y={sl[1] - 6} className="pt-lab" fill={COLOR.ok} textAnchor="end">液相面交点</text>
                     <text x={base[0] + 8} y={base[1] + 14} className="pt-lab">P(q₁) = P(q₂)</text>
                   </>
                 );
               }}
             </Axo3D>
-            <SliderRow label="状态 q₁ 的 T" labelWidth={92} value={toC(T)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color="#c00000" onChange={(v) => setT(toK(v))} />
+            <SliderRow label="状态 q₁ 的 T" labelWidth={92} value={toC(T)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color={COLOR.stateX0} onChange={(v) => setT(toK(v))} />
             <LocalParam label="状态 q₂ 的 T′" labelWidth={92} value={toC(T2)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color={COLOR.accent} onChange={(v) => setT2(toK(v))} />
             <div className="callout">
               q₁ = ({fmtNum(x0[0], 3)}, {fmtNum(x0[1], 3)}, {toC(T).toFixed(0)} °C) 与 q₂ = ({fmtNum(x0[0], 3)}, {fmtNum(x0[1], 3)}, {toC(T2).toFixed(0)} °C)

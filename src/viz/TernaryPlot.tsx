@@ -5,6 +5,7 @@ import { hexToRgb, mixRgb, solidColor } from '../core/colors';
 import type { PhaseDiagram } from '../core/diagram';
 import type { Comp } from '../core/types';
 import { useSize } from '../ui/useSize';
+import { COLOR } from '../ui/tokens';
 
 /**
  * 可复用的三元成分三角形（SVG）。底图（初晶区 / 液相面温度）以栅格图像嵌入，
@@ -187,7 +188,7 @@ export function TernaryPlot({ d, background = 'fields', boundaries = true, invar
               const p = m.px(s.n);
               return (
                 <g key={s.id}>
-                  <rect x={p[0] - 3.5} y={p[1] - 3.5} width={7} height={7} fill={solidColor(s.index)} stroke="#1d2229" strokeWidth={0.8} />
+                  <rect x={p[0] - 3.5} y={p[1] - 3.5} width={7} height={7} fill={solidColor(s.index)} stroke={COLOR.ink} strokeWidth={0.8} />
                   <text x={p[0] + 6} y={p[1] + 12} className="tp-ilab">{s.label}</text>
                 </g>
               );
@@ -293,7 +294,7 @@ export function Arrow({ p, q, cls, head = 7 }: { p: [number, number]; q: [number
 }
 
 /** 可拖动手柄 */
-export function Handle({ m, x, onDrag, color = '#c00000', r = 6, label }: { m: TriMap; x: Comp; onDrag: (x: Comp) => void; color?: string; r?: number; label?: string }) {
+export function Handle({ m, x, onDrag, color = COLOR.stateX0, r = 6, label }: { m: TriMap; x: Comp; onDrag: (x: Comp) => void; color?: string; r?: number; label?: string }) {
   const p = m.px(x);
   const down = useRef(false);
   return (
@@ -313,7 +314,7 @@ export function Handle({ m, x, onDrag, color = '#c00000', r = 6, label }: { m: T
       onPointerUp={() => (down.current = false)}
     >
       <circle cx={p[0]} cy={p[1]} r={r + 5} fill="transparent" />
-      <circle cx={p[0]} cy={p[1]} r={r} fill="#fff" stroke={color} strokeWidth={2} />
+      <circle cx={p[0]} cy={p[1]} r={r} fill={COLOR.white} stroke={color} strokeWidth={2} />
       <circle cx={p[0]} cy={p[1]} r={2} fill={color} />
       {label && (
         <text x={p[0] + r + 3} y={p[1] - r} className="tp-hlab" fill={color}>

@@ -20,10 +20,10 @@ export interface Theme {
 
 export const THEME_LIGHT: Theme = {
   dark: false,
-  text: '#1d2229',
-  textDim: '#4b5563',
+  text: COLOR.ink,
+  textDim: COLOR.dim,
   grid: 'rgba(0,0,0,0.13)',
-  line: '#1d2229',
+  line: COLOR.ink,
   halo: 'rgba(255,255,255,0.92)',
 };
 
@@ -206,7 +206,7 @@ export function drawIso(
     ctx.setLineDash([]);
   }
   // 饱和弧（液相线与等温面的交线）
-  ctx.strokeStyle = '#111111';
+  ctx.strokeStyle = COLOR.black;
   ctx.lineWidth = Math.max(1.4, opts.fontPx / 7);
   for (const a of sec.arcs) {
     ctx.beginPath();
@@ -369,7 +369,7 @@ export function drawVertical(
   ctx.drawImage(cv, lay.x, lay.y, lay.w, lay.h);
   const f = opts.fontPx;
   // 液相线（沿截面）
-  ctx.strokeStyle = '#111111';
+  ctx.strokeStyle = COLOR.black;
   ctx.lineWidth = Math.max(1.5, f / 6);
   const U = ras.liquidus.length;
   ctx.save();
@@ -592,9 +592,9 @@ function arrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, ang: num
 }
 
 export const KIND_COLOR: Record<ReactionType, string> = {
-  eutectic: '#1d2229',
-  transition: '#D95319',
-  peritectic: '#C00000',
+  eutectic: COLOR.ink,
+  transition: COLOR.component[0],
+  peritectic: COLOR.stateX0,
 };
 
 export function drawProjection(
@@ -619,7 +619,7 @@ export function drawProjection(
     base.levels.forEach((arr, lv) => {
       if (arr.length < 40) return;
       const p = arr[Math.floor(arr.length / 2)];
-      haloText(ctx, `${lv}`, p[0] / o.dpr, p[1] / o.dpr, th, '#1d2229');
+      haloText(ctx, `${lv}`, p[0] / o.dpr, p[1] / o.dpr, th, COLOR.ink);
     });
   }
   drawTriangleFrame(ctx, L, d, th, { grid: false, ticks: true, fontPx: f });
@@ -682,8 +682,8 @@ export function drawProjection(
       }
       for (const mi of cv.maxima) {
         const p = L.px(cv.pts[mi]);
-        ctx.fillStyle = '#EDB120';
-        ctx.strokeStyle = '#1d2229';
+        ctx.fillStyle = COLOR.compound[0];
+        ctx.strokeStyle = COLOR.ink;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(p[0], p[1] - f * 0.55);
@@ -704,7 +704,7 @@ export function drawProjection(
   for (const fl of d.topo.fields) {
     if (fl.area < 0.02) continue;
     const p = L.px(fl.centroid);
-    haloText(ctx, `${d.solids[fl.si].label} 初晶区`, p[0], p[1], th, '#1d2229');
+    haloText(ctx, `${d.solids[fl.si].label} 初晶区`, p[0], p[1], th, COLOR.ink);
   }
   // 不变点
   if (o.invariants) {
@@ -712,7 +712,7 @@ export function drawProjection(
       const p = L.px(iv.x);
       const col = COLOR.point[iv.reaction.type === 'eutectic' ? 'eutectic' : iv.reaction.type === 'transition' ? 'transition' : 'peritectic'];
       ctx.fillStyle = col;
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = COLOR.white;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(p[0], p[1], f * (iv.rank === 'ternary' ? 0.52 : 0.36), 0, Math.PI * 2);
@@ -728,7 +728,7 @@ export function drawProjection(
   if (extra.trace && extra.trace.liquidPath.length > 1) {
     const path = extra.trace.liquidPath;
     const cur = extra.trace.samples[Math.min(extra.trace.samples.length - 1, Math.round(extra.idx))];
-    ctx.strokeStyle = '#7E2F8E';
+    ctx.strokeStyle = COLOR.path;
     ctx.lineWidth = 2.2;
     ctx.setLineDash([]);
     ctx.beginPath();
@@ -757,8 +757,8 @@ export function drawProjection(
     ctx.stroke();
     ctx.setLineDash([]);
     if (last) {
-      ctx.fillStyle = '#7E2F8E';
-      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = COLOR.path;
+      ctx.strokeStyle = COLOR.white;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(last[0], last[1], f * 0.5, 0, Math.PI * 2);
@@ -770,7 +770,7 @@ export function drawProjection(
   if (extra.spec) {
     const a = L.px(extra.spec.p1);
     const b = L.px(extra.spec.p2);
-    ctx.strokeStyle = '#1f4e79';
+    ctx.strokeStyle = COLOR.accent2;
     ctx.lineWidth = 2;
     ctx.setLineDash([7, 4]);
     ctx.beginPath();
@@ -793,10 +793,10 @@ export function drawStatePoint(ctx: CanvasRenderingContext2D, p: [number, number
   ctx.moveTo(p[0], p[1] - f * 1.1);
   ctx.lineTo(p[0], p[1] + f * 1.1);
   ctx.stroke();
-  ctx.strokeStyle = '#1d2229';
+  ctx.strokeStyle = COLOR.ink;
   ctx.lineWidth = 1.6;
   ctx.stroke();
-  ctx.fillStyle = '#c00000';
+  ctx.fillStyle = COLOR.stateX0;
   ctx.beginPath();
   ctx.arc(p[0], p[1], f * 0.3, 0, Math.PI * 2);
   ctx.fill();

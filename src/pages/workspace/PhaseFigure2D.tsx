@@ -171,9 +171,9 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
   if (ov.path && trace.liquidPath.length > 1) {
     const all = trace.liquidPath.map((q) => P(q.x).join(',')).join(' ');
     const done = trace.liquidPath.filter((q) => q.t <= (curSample?.t ?? 0) + 1e-9);
-    overlays.push(<polyline key="pathAll" points={all} fill="none" stroke="#7E2F8E" strokeWidth={1.4} strokeDasharray="5 4" opacity={mode === 'cooling' ? 0.55 : 0.35} />);
+    overlays.push(<polyline key="pathAll" points={all} fill="none" stroke={COLOR.path} strokeWidth={1.4} strokeDasharray="5 4" opacity={mode === 'cooling' ? 0.55 : 0.35} />);
     if (mode === 'cooling' && done.length > 1)
-      overlays.push(<polyline key="pathDone" points={done.map((q) => P(q.x).join(',')).join(' ')} fill="none" stroke="#7E2F8E" strokeWidth={2.6} />);
+      overlays.push(<polyline key="pathDone" points={done.map((q) => P(q.x).join(',')).join(' ')} fill="none" stroke={COLOR.path} strokeWidth={2.6} />);
   }
   // x₀ 轨迹（成分探索）
   if (ov.trail && mode === 'composition' && trail.length > 1) {
@@ -185,15 +185,15 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
   // 平衡相：连结线 / 三角形、杠杆臂
   if (ov.eq && eq.phases.length >= 2) {
     const pts = eq.phases.map((p) => P(p.x));
-    if (pts.length === 2) overlays.push(<line key="tie" x1={pts[0][0]} y1={pts[0][1]} x2={pts[1][0]} y2={pts[1][1]} stroke="#1d2229" strokeWidth={1.8} />);
-    else overlays.push(<polygon key="tri" points={pts.map((p) => p.join(',')).join(' ')} fill="rgba(0,114,189,0.08)" stroke="#1d2229" strokeWidth={1.6} />);
+    if (pts.length === 2) overlays.push(<line key="tie" x1={pts[0][0]} y1={pts[0][1]} x2={pts[1][0]} y2={pts[1][1]} stroke={COLOR.ink} strokeWidth={1.8} />);
+    else overlays.push(<polygon key="tri" points={pts.map((p) => p.join(',')).join(' ')} fill="rgba(0,114,189,0.08)" stroke={COLOR.ink} strokeWidth={1.6} />);
     eq.phases.forEach((p, k) => {
       const q = pts[k];
       const col = p.si < 0 ? LIQ : phaseColor(d, p.id);
       overlays.push(
         <g key={`ph${k}`}>
           <line x1={p0[0]} y1={p0[1]} x2={q[0]} y2={q[1]} stroke={col} strokeWidth={1} strokeDasharray="2 2" />
-          <rect x={q[0] - 4.5} y={q[1] - 4.5} width={9} height={9} fill={col} stroke="#1d2229" strokeWidth={0.8} transform={p.si < 0 ? `rotate(45 ${q[0]} ${q[1]})` : undefined} />
+          <rect x={q[0] - 4.5} y={q[1] - 4.5} width={9} height={9} fill={col} stroke={COLOR.ink} strokeWidth={0.8} transform={p.si < 0 ? `rotate(45 ${q[0]} ${q[1]})` : undefined} />
           <text x={q[0] + 7} y={q[1] - 6} className="f2-lab" fill={col}>
             {p.id} {(p.frac * 100).toFixed(1)}%
           </text>
@@ -204,13 +204,13 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
   // 梯度与等温线切向（在 x₀）
   if (ov.grad && an) {
     for (const v of an.vectors.filter((q) => q.label === '−∇T_liq' || q.label === 't_iso')) {
-      overlays.push(arrow(p0, v.v, 46, v.label === '−∇T_liq' ? '#D95319' : '#7b8490', v.label, `g${v.label}`));
+      overlays.push(arrow(p0, v.v, 46, v.label === '−∇T_liq' ? COLOR.component[0] : COLOR.muted, v.label, `g${v.label}`));
     }
   }
   // 界线标架（液相点在界线上时）与液相移动方向
   if (ov.frame && an) {
     for (const v of an.vectors.filter((q) => q.label.startsWith('t（') || q.label.startsWith('n（') || q.label.startsWith('dx_L'))) {
-      overlays.push(arrow(P(v.at), v.v, 42, v.label.startsWith('n') ? '#77AC30' : '#7E2F8E', v.label.split('（')[0], `f${v.label}`));
+      overlays.push(arrow(P(v.at), v.v, 42, v.label.startsWith('n') ? COLOR.component[2] : COLOR.path, v.label.split('（')[0], `f${v.label}`));
     }
   }
   // 选中界线：该点的切向、法向与切线规则交点
@@ -221,23 +221,23 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
       const s = Math.min(cp.length, Math.max(0, sel.s ?? cp.length / 2));
       const a2 = analyzeCurveAt(d, cvSel, s);
       const q = P(a2.frame.x);
-      overlays.push(<polyline key="selcv" points={cvSel.pts.map((x) => P(x).join(',')).join(' ')} fill="none" stroke="#EDB120" strokeWidth={5} opacity={0.55} />);
-      overlays.push(arrow(q, a2.frame.tCool, 50, '#7E2F8E', 't', 'selt'));
-      overlays.push(arrow(q, [-a2.frame.tCool[1], a2.frame.tCool[0]], 36, '#77AC30', 'n', 'seln'));
+      overlays.push(<polyline key="selcv" points={cvSel.pts.map((x) => P(x).join(',')).join(' ')} fill="none" stroke={COLOR.compound[0]} strokeWidth={5} opacity={0.55} />);
+      overlays.push(arrow(q, a2.frame.tCool, 50, COLOR.path, 't', 'selt'));
+      overlays.push(arrow(q, [-a2.frame.tCool[1], a2.frame.tCool[0]], 36, COLOR.component[2], 'n', 'seln'));
       const A = P(a2.ya);
       const B = P(a2.yb);
       overlays.push(<line key="seljoin" x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={1.4} />);
       if (a2.ti.point) {
         const X = P(a2.ti.point);
-        overlays.push(<line key="selext" x1={q[0]} y1={q[1]} x2={X[0]} y2={X[1]} stroke="#7E2F8E" strokeWidth={1} strokeDasharray="5 3" />);
-        overlays.push(<circle key="selx" cx={X[0]} cy={X[1]} r={4.5} fill={a2.ti.kind === 'eutectic' ? '#77AC30' : '#C00000'} stroke="#1d2229" />);
+        overlays.push(<line key="selext" x1={q[0]} y1={q[1]} x2={X[0]} y2={X[1]} stroke={COLOR.path} strokeWidth={1} strokeDasharray="5 3" />);
+        overlays.push(<circle key="selx" cx={X[0]} cy={X[1]} r={4.5} fill={a2.ti.kind === 'eutectic' ? COLOR.component[2] : COLOR.stateX0} stroke={COLOR.ink} />);
         overlays.push(
           <text key="selxl" x={X[0] + 6} y={X[1] + 13} className="f2-lab">
             x*（λ = {a2.ti.lambda.toFixed(3)}）
           </text>,
         );
       }
-      overlays.push(<circle key="selp" cx={q[0]} cy={q[1]} r={4} fill="#EDB120" stroke="#1d2229" />);
+      overlays.push(<circle key="selp" cx={q[0]} cy={q[1]} r={4} fill={COLOR.compound[0]} stroke={COLOR.ink} />);
     }
   }
   // 选中不变点：其连结（四相）三角形
@@ -246,9 +246,9 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
     if (iv) {
       const tri = iv.solidX.map((c) => P(c));
       const pl = P(iv.x);
-      overlays.push(<polygon key="ivtri" points={tri.map((p) => p.join(',')).join(' ')} fill="rgba(237,177,32,0.18)" stroke="#D95319" strokeWidth={1.6} />);
-      tri.forEach((p, k) => overlays.push(<line key={`ivl${k}`} x1={pl[0]} y1={pl[1]} x2={p[0]} y2={p[1]} stroke="#D95319" strokeDasharray="3 2" />));
-      overlays.push(<circle key="ivc" cx={pl[0]} cy={pl[1]} r={8} fill="none" stroke="#D95319" strokeWidth={2} />);
+      overlays.push(<polygon key="ivtri" points={tri.map((p) => p.join(',')).join(' ')} fill="rgba(237,177,32,0.18)" stroke={COLOR.component[0]} strokeWidth={1.6} />);
+      tri.forEach((p, k) => overlays.push(<line key={`ivl${k}`} x1={pl[0]} y1={pl[1]} x2={p[0]} y2={p[1]} stroke={COLOR.component[0]} strokeDasharray="3 2" />));
+      overlays.push(<circle key="ivc" cx={pl[0]} cy={pl[1]} r={8} fill="none" stroke={COLOR.component[0]} strokeWidth={2} />);
     }
   }
   // 相邻相区方向探测
@@ -258,8 +258,8 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
       const to: [number, number] = [p0[0] + Math.cos(nb.dir) * len, p0[1] - Math.sin(nb.dir) * len];
       overlays.push(
         <g key={`nb${nb.dir}`}>
-          <line x1={p0[0]} y1={p0[1]} x2={to[0]} y2={to[1]} stroke="#4DBEEE" strokeWidth={1} />
-          <text x={to[0]} y={to[1]} className="f2-small" fill="#1f4e79">
+          <line x1={p0[0]} y1={p0[1]} x2={to[0]} y2={to[1]} stroke={COLOR.compound[2]} strokeWidth={1} />
+          <text x={to[0]} y={to[1]} className="f2-small" fill={COLOR.accent2}>
             {nb.key}
           </text>
         </g>,
@@ -283,7 +283,7 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
         {overlays}
         {liqMark && (
           <g>
-            <circle cx={liqMark[0]} cy={liqMark[1]} r={6} fill={LIQ} stroke="#fff" strokeWidth={1.5} />
+            <circle cx={liqMark[0]} cy={liqMark[1]} r={6} fill={LIQ} stroke={COLOR.white} strokeWidth={1.5} />
             <text x={liqMark[0] + 8} y={liqMark[1] + 14} className="f2-lab" fill={LIQ}>
               x_L
             </text>

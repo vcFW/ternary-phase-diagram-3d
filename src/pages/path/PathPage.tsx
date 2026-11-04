@@ -59,7 +59,7 @@ function EquilibriumSection() {
   const S = trace.samples;
   const cur = S[Math.min(S.length - 1, Math.round(idx))];
   const fs = useMemo(() => fracSeries(d, S), [d, S]);
-  const Tc: Series[] = useMemo(() => [{ id: 'T', pts: S.map((s) => [s.t, toC(s.T)] as [number, number]), color: '#1d2229', label: '冷却曲线 T(t)' }], [S]);
+  const Tc: Series[] = useMemo(() => [{ id: 'T', pts: S.map((s) => [s.t, toC(s.T)] as [number, number]), color: COLOR.ink, label: '冷却曲线 T(t)' }], [S]);
   const xl: Series[] = useMemo(() => {
     const L = S.filter((s) => s.eq.phases.some((p) => p.si < 0));
     return [0, 1, 2].map((i) => ({ id: `x${i}`, pts: L.map((s) => [s.t, s.eq.phases.find((p) => p.si < 0)!.x[i]] as [number, number]), color: COLOR.component[i], label: `x_L(${sym[i]})` }));
@@ -68,7 +68,7 @@ function EquilibriumSection() {
   const rule = phaseRule(d, eq, x0, xi >= 0);
   const inv = invariantAnalyses(d);
   const tNow = cur?.t ?? 0;
-  const evLines = trace.events.map((e) => ({ x: e.t, color: e.plateau ? '#c00000' : '#7b8490' }));
+  const evLines = trace.events.map((e) => ({ x: e.t, color: e.plateau ? COLOR.stateX0 : COLOR.muted }));
   return (
     <>
       <PageTitle title="平衡冷却逐步推演" desc="每一时刻都满足同一组守恒方程 x₀ = Σ fᵢcᵢ；改变的只是参与方程的相与各相成分。" />
@@ -81,12 +81,12 @@ function EquilibriumSection() {
                   const P = eq.phases.map((p) => m.px(p.x));
                   return (
                     <>
-                      <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke="#7e2f8e" strokeWidth={2.4} />
+                      <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke={COLOR.path} strokeWidth={2.4} />
                       {P.length === 3 && <polygon points={P.map((p) => p.join(',')).join(' ')} className="tri-fill" />}
                       {P.length === 2 && <line x1={P[0][0]} y1={P[0][1]} x2={P[1][0]} y2={P[1][1]} className="lnk" strokeWidth={1.8} />}
                       {P.length === 4 && <polygon points={P.map((p) => p.join(',')).join(' ')} className="tri-fill bad" />}
                       {eq.phases.map((p, k) => (
-                        <circle key={k} cx={P[k][0]} cy={P[k][1]} r={p.si < 0 ? 5 : 4} fill={p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id)} stroke="#1d2229" />
+                        <circle key={k} cx={P[k][0]} cy={P[k][1]} r={p.si < 0 ? 5 : 4} fill={p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id)} stroke={COLOR.ink} />
                       ))}
                       <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀（固定）" />
                     </>
@@ -111,7 +111,7 @@ function EquilibriumSection() {
               M={[0, 1, 2].map((i) => [...eq.phases.map((p) => p.x[i]), x0[i]])}
               rowLabels={sym}
               colLabels={[...eq.phases.map((p) => p.id), 'x₀']}
-              colColors={[...eq.phases.map((p) => (p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id))), '#1d2229']}
+              colColors={[...eq.phases.map((p) => (p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id))), COLOR.ink]}
               aug={eq.phases.length}
             />
             <KV
@@ -125,9 +125,9 @@ function EquilibriumSection() {
         </div>
         <div className="stack">
           <Panel title="相分数、冷却曲线与液相成分（横轴：放热进度 t）" prov="model" sub="t ∝ 释放的热量（焓平衡），平台长度 ∝ 潜热">
-            <XYPlot height={190} series={fs} ylim={[0, 1]} xlim={[0, 100]} ylabel="相分数 f" vlines={[...evLines, { x: tNow, color: '#c00000', dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
-            <XYPlot height={160} series={Tc} xlim={[0, 100]} ylabel="T / °C" vlines={[{ x: tNow, color: '#c00000', dash: '' }]} legend={false} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
-            <XYPlot height={160} series={xl} xlim={[0, 100]} ylim={[0, 1]} xlabel="放热进度 t" ylabel="x_L" vlines={[{ x: tNow, color: '#c00000', dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+            <XYPlot height={190} series={fs} ylim={[0, 1]} xlim={[0, 100]} ylabel="相分数 f" vlines={[...evLines, { x: tNow, color: COLOR.stateX0, dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+            <XYPlot height={160} series={Tc} xlim={[0, 100]} ylabel="T / °C" vlines={[{ x: tNow, color: COLOR.stateX0, dash: '' }]} legend={false} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+            <XYPlot height={160} series={xl} xlim={[0, 100]} ylim={[0, 1]} xlabel="放热进度 t" ylabel="x_L" vlines={[{ x: tNow, color: COLOR.stateX0, dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
           </Panel>
           <Panel title="事件与每一步的数学 / 热力学条件" prov="model">
             <ol className="ev-list">
@@ -182,7 +182,7 @@ function ScheilSection() {
   const eqFin = trace.finalPhases;
   const ids = Array.from(new Set([...Object.keys(fin.solids), ...eqFin.map((p) => p.id)]));
   const eqL: Series = { id: 'eqL', pts: trace.samples.map((s) => [toC(s.T), s.eq.phases.find((p) => p.si < 0)?.frac ?? 0] as [number, number]).filter((p) => p[0] <= toC(trace.Tliq) + 1), color: COLOR.phase.liquid, label: '平衡：液相分数' };
-  const scL: Series = { id: 'scL', pts: sch.map((s) => [toC(s.T), s.fL] as [number, number]), color: '#c00000', dash: '5 3', label: 'Scheil：剩余液相分数' };
+  const scL: Series = { id: 'scL', pts: sch.map((s) => [toC(s.T), s.fL] as [number, number]), color: COLOR.stateX0, dash: '5 3', label: 'Scheil：剩余液相分数' };
   const Tlo = Math.min(...trace.samples.map((s) => s.T), ...sch.map((s) => s.T));
   return (
     <>
@@ -195,7 +195,7 @@ function ScheilSection() {
                 {(m) => (
                   <>
                     <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke={COLOR.phase.liquid} strokeWidth={3} />
-                    <polyline points={sch.map((s) => m.px(s.xL).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={1.8} strokeDasharray="5 3" />
+                    <polyline points={sch.map((s) => m.px(s.xL).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={1.8} strokeDasharray="5 3" />
                     <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀" />
                   </>
                 )}
@@ -203,7 +203,7 @@ function ScheilSection() {
             </div>
             <div className="legend-inline">
               <span><i style={{ background: COLOR.phase.liquid }} />平衡冷却</span>
-              <span><i style={{ background: '#c00000' }} />Scheil</span>
+              <span><i style={{ background: COLOR.stateX0 }} />Scheil</span>
             </div>
           </Panel>
           <Panel title="液相分数随温度" prov="model">

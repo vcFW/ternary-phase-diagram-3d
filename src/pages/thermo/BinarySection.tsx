@@ -50,14 +50,14 @@ export function BinarySection() {
       series.push({ id: c.id, pts: p, color: c.id === 'L' ? COLOR.phase.liquid : COLOR.component[0], label: c.id === 'L' ? 'G_L(x)' : `G_${c.id}(x)` });
     } else if (c.point) {
       const s = d.solids.find((q) => q.id === c.id);
-      pts.push({ x: c.point.x, y: c.point.G / 1000, color: s ? solidColor(s.index) : '#1d2229', r: 4.5, label: c.id });
+      pts.push({ x: c.point.x, y: c.point.G / 1000, color: s ? solidColor(s.index) : COLOR.ink, r: 4.5, label: c.id });
     }
   }
   // 公切线
   for (const [k, t] of be.tangents.entries()) {
     const g = (x: number) => (t.mu[0] * (1 - x) + t.mu[1] * x) / 1000;
-    series.push({ id: `t${k}`, pts: [[0, g(0)], [1, g(1)]], color: '#1d2229', width: 1, dash: '5 3' });
-    pts.push({ x: 0, y: g(0), color: '#1d2229', r: 3 }, { x: 1, y: g(1), color: '#1d2229', r: 3 });
+    series.push({ id: `t${k}`, pts: [[0, g(0)], [1, g(1)]], color: COLOR.ink, width: 1, dash: '5 3' });
+    pts.push({ x: 0, y: g(0), color: COLOR.ink, r: 3 }, { x: 1, y: g(1), color: COLOR.ink, r: 3 });
   }
   const ys = series.flatMap((s) => s.pts.map((p) => p[1])).concat(pts.map((p) => p.y));
   const ylo = Math.min(...ys);
@@ -107,7 +107,7 @@ export function BinarySection() {
               ylim={[ylo - 0.4, Math.max(yhi, ylo + 1) + 0.3]}
               xlabel={`x_${right}（${left}–${right} 二元）`}
               ylabel="G / (kJ·mol⁻¹)，以纯固相为基准"
-              vlines={be.tangents.flatMap((t) => [{ x: t.xa, color: '#7b8490' }, { x: t.xb, color: '#7b8490' }])}
+              vlines={be.tangents.flatMap((t) => [{ x: t.xa, color: COLOR.muted }, { x: t.xb, color: COLOR.muted }])}
             />
             <LocalParam label="T" labelWidth={30} value={toC(T)} min={Math.ceil(toC(range.Tmin))} max={Math.floor(toC(range.Tmax))} step={1} digits={0} unit="°C" onChange={(v) => setTl(toK(v))} global={toC(Tg)} onSetGlobal={(v) => setTglobal(toK(v))} />
             {src === 'ss' && (
@@ -151,7 +151,7 @@ export function BinarySection() {
             )}
           </Panel>
           <Panel title="由公切线逐温度构造的 T–x 相图" prov={src === 'edge' ? 'model' : 'demo'} sub="每条曲线 = 公切点随温度的轨迹">
-            <XYPlot height={250} series={pd} xlim={[0, 1]} xlabel={`x_${right}`} ylabel="T / °C" hlines={[{ y: toC(T), color: '#c00000', label: '当前 T' }]} onPick={(_x, y) => setTl(toK(y))} />
+            <XYPlot height={250} series={pd} xlim={[0, 1]} xlabel={`x_${right}`} ylabel="T / °C" hlines={[{ y: toC(T), color: COLOR.stateX0, label: '当前 T' }]} onPick={(_x, y) => setTl(toK(y))} />
             <p className="note">点击图中任意高度可改变左侧 G(x) 图的温度。{src === 'ss' && 'Ω_α 足够大时固溶体曲线出现双峰（溶解度间隙），共晶型相图由此"长出来"。'}</p>
           </Panel>
         </div>

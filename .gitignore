@@ -11,3 +11,4 @@ __pycache__
 demo/*.mp4
 test-results
 playwright-report
+e2e/*-snapshots

@@ -68,7 +68,7 @@ export function LeverSection() {
           title: '发现冗余',
           body: (
             <>
-              <MatrixView name="[A_full | b]" M={r.Afull.map((row, i) => [...row, r.bfull[i]])} rowLabels={[...sym.map((s) => `x_${s}`), 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, '#1d2229']} aug={r.k} hiCol={hi} onHoverCol={setHi} />
+              <MatrixView name="[A_full | b]" M={r.Afull.map((row, i) => [...row, r.bfull[i]])} rowLabels={[...sym.map((s) => `x_${s}`), 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, COLOR.ink]} aug={r.k} hiCol={hi} onHoverCol={setHi} />
               <span>
                 rank(A_full) = {r.rankFull} ≤ 3：三行守恒方程之和 = 归一化行（每列分量和为 1）。删去 x_{sym[2]} 行得约化系统。
               </span>
@@ -80,7 +80,7 @@ export function LeverSection() {
           title: '约化系统',
           body: (
             <>
-              <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={[`x_${sym[0]}`, `x_${sym[1]}`, 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, '#1d2229']} aug={r.k} hiCol={hi} onHoverCol={setHi} />
+              <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={[`x_${sym[0]}`, `x_${sym[1]}`, 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, COLOR.ink]} aug={r.k} hiCol={hi} onHoverCol={setHi} />
               <span>
                 rank A = {r.rank}，奇异值 {r.singular.map((v) => fmtNum(v, 4)).join(', ')}
                 {r.det !== null && <>，det A = {fmtNum(r.det, 5)}</>}，κ(A) = {Number.isFinite(r.cond) ? fmtNum(r.cond, 3) : '∞'}
@@ -158,14 +158,14 @@ export function LeverSection() {
                       {P.length === 2 && <line x1={P[0][0]} y1={P[0][1]} x2={P[1][0]} y2={P[1][1]} className={`lnk ${bad ? 'hi' : ''}`} strokeWidth={2} />}
                       {P.length === 4 && <polygon points={P.map((p) => p.join(',')).join(' ')} className="tri-fill" />}
                       {hi !== null && P.length === 3 && hi < 3 && (
-                        <polygon points={[c, P[(hi + 1) % 3], P[(hi + 2) % 3]].map((p) => p.join(',')).join(' ')} fill="rgba(237,177,32,0.45)" stroke="#d95319" />
+                        <polygon points={[c, P[(hi + 1) % 3], P[(hi + 2) % 3]].map((p) => p.join(',')).join(' ')} fill="rgba(237,177,32,0.45)" stroke={COLOR.component[0]} />
                       )}
                       {P.map((p, j) => (
                         <line key={`l${j}`} x1={c[0]} y1={c[1]} x2={p[0]} y2={p[1]} stroke={colColors[j]} strokeWidth={hi === j ? 2.4 : 1} strokeDasharray="3 2" />
                       ))}
                       {P.map((p, j) => (
                         <g key={j} onMouseEnter={() => setHi(j)} onMouseLeave={() => setHi(null)}>
-                          <circle cx={p[0]} cy={p[1]} r={hi === j ? 8 : 6} fill={colColors[j]} stroke="#1d2229" />
+                          <circle cx={p[0]} cy={p[1]} r={hi === j ? 8 : 6} fill={colColors[j]} stroke={COLOR.ink} />
                           <text x={p[0] + 9} y={p[1] - 7} className="pt-lab" fill={colColors[j]}>
                             {phases[j].id}
                             {r?.f ? ` f=${fmtNum(r.f[j], 3)}` : ''}

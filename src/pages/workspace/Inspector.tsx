@@ -410,7 +410,7 @@ function EvoTab({ an, history }: { an: PointAnalysis; history: { x: Comp; G: num
       color: id === 'L' ? COLOR.phase.liquid : phaseColor(d, id),
       label: id,
     }));
-    const gs: Series[] = [{ id: 'G', pts: S.filter((s) => s.xi < 0).map((s) => [toC(s.T), s.eq.G / 1000] as [number, number]), color: '#1d2229', label: 'G_eq(T)' }];
+    const gs: Series[] = [{ id: 'G', pts: S.filter((s) => s.xi < 0).map((s) => [toC(s.T), s.eq.G / 1000] as [number, number]), color: COLOR.ink, label: 'G_eq(T)' }];
     // 当前温度的 df/dT（有限差分）
     const k = Math.min(S.length - 2, Math.max(0, Math.round(idx)));
     const a = S[k];
@@ -422,8 +422,8 @@ function EvoTab({ an, history }: { an: PointAnalysis; history: { x: Comp; G: num
           <p className="small">
             封闭体系的总成分不随时间变化 —— 图中红色 x₀ 保持不动；移动的是液相成分 x_L（蓝色）与相分数。质量守恒在每一时刻都成立：Σ fᵢ cᵢ = x₀。
           </p>
-          <XYPlot height={170} series={fs} ylim={[0, 1]} xlim={[toC(S[0].T), toC(S[S.length - 1].T)]} xlabel="T / °C（向右降温）" ylabel="相分数" vlines={[{ x: toC(cur.T), color: '#C00000', dash: '' }]} />
-          <XYPlot height={140} series={gs} xlim={[toC(S[0].T), toC(S[S.length - 1].T)]} ylabel="G / kJ" legend={false} vlines={[{ x: toC(cur.T), color: '#C00000', dash: '' }]} />
+          <XYPlot height={170} series={fs} ylim={[0, 1]} xlim={[toC(S[0].T), toC(S[S.length - 1].T)]} xlabel="T / °C（向右降温）" ylabel="相分数" vlines={[{ x: toC(cur.T), color: COLOR.stateX0, dash: '' }]} />
+          <XYPlot height={140} series={gs} xlim={[toC(S[0].T), toC(S[S.length - 1].T)]} ylabel="G / kJ" legend={false} vlines={[{ x: toC(cur.T), color: COLOR.stateX0, dash: '' }]} />
         </Sec>
         {a && b && dT > 1e-6 && a.eq.key === b.eq.key && (
           <Sec title="此刻的变化率（降温 1 K）" prov="model">
@@ -459,7 +459,7 @@ function EvoTab({ an, history }: { an: PointAnalysis; history: { x: Comp; G: num
   const prev = n >= 2 ? history[n - 2] : null;
   const dx: number[] | null = last && prev ? [0, 1, 2].map((i) => last.x[i] - prev.x[i]) : null;
   const pred = dx && an.sens.valid ? an.sens.M.map((r) => r[0] * dx[0] + r[1] * dx[1]) : null;
-  const gs: Series[] = [{ id: 'G', pts: history.map((h, i) => [i, h.G / 1000] as [number, number]), color: '#1d2229', label: 'G_eq（拖动序列）' }];
+  const gs: Series[] = [{ id: 'G', pts: history.map((h, i) => [i, h.G / 1000] as [number, number]), color: COLOR.ink, label: 'G_eq（拖动序列）' }];
   return (
     <>
       <Sec title="成分探索：T 固定，x₀ 为变量" prov="model">

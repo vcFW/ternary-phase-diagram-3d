@@ -15,7 +15,7 @@ import type { Trace } from '../core/cooling';
 import type { Comp, Equilibrium } from '../core/types';
 import { lerpComp, type VerticalSpec } from '../core/vertical';
 import type { Layers, Selection } from '../state/store';
-import { COLOR, hexNum } from '../ui/tokens';
+import { COLOR, hexNum, SCENE } from '../ui/tokens';
 
 /** 世界坐标：成分三角形位于 XZ 平面（A 左前、B 右前、C 后），温度映射到 Y。 */
 const HEIGHT0 = 1.12;
@@ -232,7 +232,7 @@ export class PhaseScene {
     this.controls.addEventListener('start', () => (this.userMoved = true));
     this.scene.add(this.staticGroup, this.dyn);
     this.dyn.add(this.stateGroup, this.pathGroup, this.regionGroup);
-    const amb = new THREE.AmbientLight(0xffffff, 1);
+    const amb = new THREE.AmbientLight(hexNum(SCENE.ambient), 1);
     this.scene.add(amb);
     this.initIso();
     this.initVert();
@@ -360,7 +360,7 @@ export class PhaseScene {
       geo.setColors(cols);
     }
     const mat = new LineMaterial({
-      color: Array.isArray(color) ? 0xffffff : color,
+      color: Array.isArray(color) ? hexNum(SCENE.ambient) : color,
       linewidth: width,
       vertexColors: Array.isArray(color),
       dashed: !!opts?.dashed,
@@ -439,11 +439,11 @@ export class PhaseScene {
     ];
     const bottom = V.map((v) => this.W(v, Tmin));
     const top = V.map((v) => this.W(v, Tmax));
-    const edgeCol = 0x202020;
+    const edgeCol = hexNum(SCENE.edge);
     // 底面（淡）
     const bg = new THREE.BufferGeometry().setFromPoints([bottom[0], bottom[1], bottom[2]]);
     bg.setIndex([0, 1, 2]);
-    frame.add(new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: 0xeef0f3, side: THREE.DoubleSide, depthWrite: false })));
+    frame.add(new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: hexNum(SCENE.background), side: THREE.DoubleSide, depthWrite: false })));
     // 外框
     frame.add(this.mkLineSeg([bottom[0], bottom[1], bottom[1], bottom[2], bottom[2], bottom[0], top[0], top[1], top[1], top[2], top[2], top[0]], edgeCol, 1));
     // 纯组元竖边
@@ -461,7 +461,7 @@ export class PhaseScene {
       const j = (i + 1) % 3;
       const g = new THREE.BufferGeometry().setFromPoints([bottom[i], bottom[j], top[j], top[i]]);
       g.setIndex([0, 1, 2, 0, 2, 3]);
-      frame.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xdfe2e6, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
+      frame.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: hexNum(SCENE.wall), transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
     }
     // 温度刻度：水平细线 + 标注（A 竖边与 B 竖边）
     const pts: THREE.Vector3[] = [];
@@ -476,7 +476,7 @@ export class PhaseScene {
       const pb = this.W(V[1], T);
       this.label(frame, new V3(pb.x + 0.065, pb.y, pb.z + 0.04), `${c}`, 'tick');
     }
-    frame.add(this.mkLineSeg(pts, 0x9da3ab, 0.55));
+    frame.add(this.mkLineSeg(pts, hexNum(SCENE.frameLine), 0.55));
     this.label(frame, new V3(-0.62, this.H + 0.06, 0.34), '温度 T / °C', 'axis');
     // 成分网格与刻度
     const gp: THREE.Vector3[] = [];
@@ -494,7 +494,7 @@ export class PhaseScene {
         gp.push(this.W(a, Tmin), this.W(b, Tmin));
       }
     }
-    grid.add(this.mkLineSeg(gp, 0xc3c8cf, 0.9));
+    grid.add(this.mkLineSeg(gp, hexNum(SCENE.grid), 0.9));
     for (let k = 2; k <= 8; k += 2) {
       const t = k / 10;
       const pAB = this.W([1 - t, t, 0], Tmin);
@@ -682,7 +682,7 @@ export class PhaseScene {
         }
       }
       for (const mi of cv.maxima) {
-        const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.016), new THREE.MeshBasicMaterial({ color: 0xedb120 }));
+        const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.016), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.compound[0]) }));
         m.position.copy(this.W(cv.pts[mi], cv.T[mi]));
         arrows.add(m);
         this.label(arrows, m.position.clone().add(new V3(0, 0.035, 0)), `<span class="tm">温度极大点 ${cel(cv.T[mi])}</span>`, 'tiny');
@@ -743,10 +743,10 @@ export class PhaseScene {
         this.detailLabels.push({ si: ci.si, l: this.label(g, hyp.clone().add(new V3(0.045, -0.01, 0)), `<span class="tm">假想熔点（亚稳）${cel(ci.Thyp)}</span>`, 'tiny') });
         // 该成分点处实际液相线
         const act = this.W(s.n, ci.Tliq);
-        const mk = new THREE.Mesh(new THREE.SphereGeometry(0.01, 10, 8), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+        const mk = new THREE.Mesh(new THREE.SphereGeometry(0.01, 10, 8), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.black) }));
         mk.position.copy(act);
         g.add(mk);
-        g.add(this.mkLine([hyp, act], 0x555555, 1.2, { dashed: true, opacity: 0.8 }));
+        g.add(this.mkLine([hyp, act], hexNum(SCENE.hypothetical), 1.2, { dashed: true, opacity: 0.8 }));
         this.detailLabels.push({ si: ci.si, l: this.label(g, act.clone().add(new V3(0.045, 0.012, 0)), `<span class="tm">此处实际液相线 ${cel(ci.Tliq)}（${d.solids[ci.liqSi].label} 初晶）</span>`, 'tiny') });
       }
     }
@@ -811,12 +811,12 @@ export class PhaseScene {
     this.vMesh.renderOrder = 2;
     this.dyn.add(this.vMesh);
     for (const kind of ['p1', 'p2'] as const) {
-      const h = new THREE.Mesh(new THREE.SphereGeometry(0.03, 18, 14), new THREE.MeshBasicMaterial({ color: 0x1f4e79, depthTest: false }));
+      const h = new THREE.Mesh(new THREE.SphereGeometry(0.03, 18, 14), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.accent2), depthTest: false }));
       h.renderOrder = 6;
       this.dyn.add(h);
       this.handles.push({ mesh: h, kind });
     }
-    const hs = new THREE.Mesh(new THREE.SphereGeometry(0.035, 18, 14), new THREE.MeshBasicMaterial({ color: 0xc00000, depthTest: false }));
+    const hs = new THREE.Mesh(new THREE.SphereGeometry(0.035, 18, 14), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.stateX0), depthTest: false }));
     hs.renderOrder = 7;
     this.dyn.add(hs);
     this.handles.push({ mesh: hs, kind: 'state' });
@@ -893,7 +893,7 @@ export class PhaseScene {
       this.vOutline.removeFromParent();
       this.vOutline.geometry.dispose();
     }
-    this.vOutline = this.mkLine([a, b, bT, aT, a], 0x1f4e79, 1.8);
+    this.vOutline = this.mkLine([a, b, bT, aT, a], hexNum(COLOR.accent2), 1.8);
     this.dyn.add(this.vOutline);
   }
 
@@ -996,29 +996,29 @@ export class PhaseScene {
     const base = this.W(s.x0, this.range.Tmin);
     const p = this.W(s.x0, s.T);
     // 成分竖线
-    this.stateGroup.add(this.mkLine([base, this.W(s.x0, this.range.Tmax)], 0xc00000, 1.2, { dashed: true, opacity: 0.8 }));
+    this.stateGroup.add(this.mkLine([base, this.W(s.x0, this.range.Tmax)], hexNum(COLOR.stateX0), 1.2, { dashed: true, opacity: 0.8 }));
     const hs = this.handles.find((h) => h.kind === 'state')!;
     hs.mesh.position.copy(p);
     // 平衡相标记 / 连结线
     const eq = s.eq;
     const pts = eq.phases.map((q) => ({ p: this.W(q.x, s.T), q }));
     if (s.layers.tieTriangle) {
-      if (pts.length === 2) this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p], 0x111111, 2));
+      if (pts.length === 2) this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p], hexNum(COLOR.black), 2));
       if (pts.length === 3) {
         const geo = new THREE.BufferGeometry().setFromPoints(pts.map((q) => q.p));
         geo.setIndex([0, 1, 2]);
-        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false })));
-        this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p, pts[2].p, pts[0].p], 0x111111, 2));
+        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: hexNum(SCENE.black), transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false })));
+        this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p, pts[2].p, pts[0].p], hexNum(COLOR.black), 2));
       }
       if (pts.length === 4) {
         // 四相不变反应：液相点与三固相点（连结线 + 固相三角形）
         const L0 = pts.find((q) => q.q.si < 0) ?? pts[0];
         const sol = pts.filter((q) => q !== L0);
-        this.stateGroup.add(this.mkLineSeg([L0.p, sol[0].p, L0.p, sol[1].p, L0.p, sol[2].p], 0x111111, 0.9));
+        this.stateGroup.add(this.mkLineSeg([L0.p, sol[0].p, L0.p, sol[1].p, L0.p, sol[2].p], hexNum(COLOR.black), 0.9));
         const geo = new THREE.BufferGeometry().setFromPoints(sol.map((q) => q.p));
         geo.setIndex([0, 1, 2]);
-        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xedb120, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false })));
-        this.stateGroup.add(this.mkLine([sol[0].p, sol[1].p, sol[2].p, sol[0].p], 0xb8860b, 2));
+        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: hexNum(COLOR.compound[0]), transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false })));
+        this.stateGroup.add(this.mkLine([sol[0].p, sol[1].p, sol[2].p, sol[0].p], hexNum(SCENE.tieEdge), 2));
       }
       if (pts.length > 1) {
         for (const q of pts) {

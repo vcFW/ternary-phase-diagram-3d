@@ -224,7 +224,7 @@ function MatrixLab() {
         </div>
         <div className="stack">
           <Panel title="相分数系统 A f = b" prov="math">
-            <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={['x_A', 'x_B', 'Σ']} colLabels={[...names, 'c₀']} colColors={[...p.map((_, i) => solidColor(i)), '#1d2229']} aug={p.length} digits={5} />
+            <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={['x_A', 'x_B', 'Σ']} colLabels={[...names, 'c₀']} colColors={[...p.map((_, i) => solidColor(i)), COLOR.ink]} aug={p.length} digits={5} />
             <KV
               rows={[
                 ['rank A / 相数', <span className="mono">{r.rank} / {p.length}</span>],
@@ -302,12 +302,12 @@ function DegenerateLab() {
           <XYPlot
             height={240}
             series={[
-              { id: 'k', pts: curve.map((q) => [q.e, q.k] as [number, number]), color: '#c00000', label: 'log₁₀ κ(A)' },
+              { id: 'k', pts: curve.map((q) => [q.e, q.k] as [number, number]), color: COLOR.stateX0, label: 'log₁₀ κ(A)' },
               { id: 'd', pts: curve.map((q) => [q.e, q.det] as [number, number]), color: COLOR.accent, label: 'log₁₀ |det A|' },
-              { id: 'a', pts: curve.map((q) => [q.e, q.amp] as [number, number]), color: '#77ac30', dash: '4 3', label: 'log₁₀ 实测相对误差放大' },
+              { id: 'a', pts: curve.map((q) => [q.e, q.amp] as [number, number]), color: COLOR.component[2], dash: '4 3', label: 'log₁₀ 实测相对误差放大' },
             ]}
             xlabel="log₁₀ ε（第三点到连线的距离尺度）"
-            vlines={[{ x: le, color: '#7b8490' }]}
+            vlines={[{ x: le, color: COLOR.muted }]}
           />
           <KV
             rows={[

@@ -55,9 +55,9 @@ export function LeverRule() {
                   <>
                     <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.4} />
                     <line x1={pa[0]} y1={pa[1]} x2={pb[0]} y2={pb[1]} className={`lnk ${r.status !== 'ok' ? 'hi' : ''}`} strokeWidth={2} />
-                    <Handle m={m} x={a} onDrag={setA} color="#d95319" label={`α  f=${r.f ? fmtNum(r.f[0], 3) : '—'}`} />
+                    <Handle m={m} x={a} onDrag={setA} color={COLOR.component[0]} label={`α  f=${r.f ? fmtNum(r.f[0], 3) : '—'}`} />
                     <Handle m={m} x={b} onDrag={setB} color={COLOR.accent} label={`β  f=${r.f ? fmtNum(r.f[1], 3) : '—'}`} />
-                    <Handle m={m} x={c} onDrag={onC} color="#c00000" label="c₀" />
+                    <Handle m={m} x={c} onDrag={onC} color={COLOR.stateX0} label="c₀" />
                   </>
                 );
               }}
@@ -283,7 +283,7 @@ export function RatioRule() {
                   return (
                     <>
                       <line x1={S[0]} y1={S[1]} x2={last[0]} y2={last[1]} className="lnk dash" />
-                      <polyline points={primary.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#7e2f8e" strokeWidth={3} />
+                      <polyline points={primary.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke={COLOR.path} strokeWidth={3} />
                       <Arrow p={P0} q={last} cls="tan" />
                       <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀" />
                     </>

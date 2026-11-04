@@ -12,6 +12,7 @@ import { PageTitle } from '../../viz/PageLayout';
 import { cm255, fieldImage, Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { Derivation, Eq, KV, M, Panel } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
+import { COLOR } from '../../ui/tokens';
 
 /**
  * 三元公切面：吉布斯能最小化写成线性规划，其对偶变量就是化学势 μ（公切面）。
@@ -57,12 +58,12 @@ export function TernaryGSection() {
       return [
         { N: 30, f: (x) => Math.min(1.6 * RT, tpdField(th, mu, T, x)) / 1000, color: (_x, v) => colormapCss('parula', Math.min(1, Math.sqrt(Math.max(0, v * 1000) / (1.5 * RT)))), opacity: 0.9 },
         ...solSurf,
-        { N: 2, f: () => 0, color: () => '#9aa3ad', opacity: 0.25, stroke: false },
+        { N: 2, f: () => 0, color: () => COLOR.faint, opacity: 0.25, stroke: false },
       ];
     return [
       { N: 30, f: (x) => th.Gliq(x, T) / 1000, color: (_x, v) => colormapCss('parula', 0.15 + 0.7 * ((v * 1000 - zlo0) / (zhi0 - zlo0 || 1))), opacity: 0.9 },
       ...solSurf,
-      { N: 2, f: (x) => planeAt(mu, x) / 1000, color: () => '#9aa3ad', opacity: 0.35, stroke: false },
+      { N: 2, f: (x) => planeAt(mu, x) / 1000, color: () => COLOR.faint, opacity: 0.35, stroke: false },
     ];
   }, [mode, th, mu, T, RT, zlo0, zhi0]);
   const zlim: [number, number] = mode === 'tpd' ? [-0.2, (1.6 * RT) / 1000] : [zlo0 / 1000, zhi0 / 1000];
@@ -86,7 +87,7 @@ export function TernaryGSection() {
                       const p = m.px(gm.solidReduced[s.index].x);
                       return (
                         <g key={s.id}>
-                          <circle cx={p[0]} cy={p[1]} r={5} fill={Math.abs(r) < 1e-3 ? solidColor(s.index) : '#fff'} stroke={solidColor(s.index)} strokeWidth={2} />
+                          <circle cx={p[0]} cy={p[1]} r={5} fill={Math.abs(r) < 1e-3 ? solidColor(s.index) : COLOR.white} stroke={solidColor(s.index)} strokeWidth={2} />
                           <text x={p[0] + 7} y={p[1] - 6} className="pt-lab">
                             {s.label}: r = {fmtNum(r, 1)}
                           </text>
@@ -97,7 +98,7 @@ export function TernaryGSection() {
                       .filter((p) => th.isContinuous(p.si))
                       .map((p, k) => {
                         const q = m.px(p.x);
-                        return <circle key={k} cx={q[0]} cy={q[1]} r={6} fill="none" stroke="#c00000" strokeWidth={2} />;
+                        return <circle key={k} cx={q[0]} cy={q[1]} r={6} fill="none" stroke={COLOR.stateX0} strokeWidth={2} />;
                       })}
                     <Handle m={m} x={x0} onDrag={(x) => setX0(x)} label="x₀" />
                   </>
@@ -119,7 +120,7 @@ export function TernaryGSection() {
                   return (
                     <g key={s.id}>
                       <line x1={bot[0]} y1={bot[1]} x2={top[0]} y2={top[1]} stroke={solidColor(s.index)} strokeWidth={1.4} />
-                      <circle cx={top[0]} cy={top[1]} r={4.5} fill={solidColor(s.index)} stroke="#1d2229" />
+                      <circle cx={top[0]} cy={top[1]} r={4.5} fill={solidColor(s.index)} stroke={COLOR.ink} />
                       <text x={top[0] + 6} y={top[1] - 4} className="pt-lab">{s.label}</text>
                     </g>
                   );

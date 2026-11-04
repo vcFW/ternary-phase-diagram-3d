@@ -49,8 +49,8 @@ export function StabilitySection() {
               series={data.df}
               xlabel="T / °C"
               ylabel="Δ_s / (kJ·mol⁻¹)"
-              hlines={[{ y: 0, color: '#1d2229', dash: '' }]}
-              vlines={[{ x: toC(liq.T), color: '#c00000', label: '液相线' }, { x: toC(T), color: '#7b8490', label: '当前 T' }]}
+              hlines={[{ y: 0, color: COLOR.ink, dash: '' }]}
+              vlines={[{ x: toC(liq.T), color: COLOR.stateX0, label: '液相线' }, { x: toC(T), color: COLOR.muted, label: '当前 T' }]}
               onPick={(x) => setT(toK(x))}
             />
             <table className="grid">
@@ -83,11 +83,11 @@ export function StabilitySection() {
               height={220}
               series={[
                 { id: 'L', pts: data.gL, color: COLOR.phase.liquid, label: 'G_L(x₀, T)：强制保持均匀液相' },
-                { id: 'E', pts: data.gE, color: '#c00000', dash: '5 3', label: 'G_eq(T)：最小化后的平衡态' },
+                { id: 'E', pts: data.gE, color: COLOR.stateX0, dash: '5 3', label: 'G_eq(T)：最小化后的平衡态' },
               ]}
               xlabel="T / °C"
               ylabel="G / (kJ·mol⁻¹)"
-              vlines={[{ x: toC(liq.T), color: '#c00000' }]}
+              vlines={[{ x: toC(liq.T), color: COLOR.stateX0 }]}
             />
             <p>液相线以上两线重合（均匀液相就是最小值）；以下 G_eq &lt; G_L，差值为析晶（相分离）带来的吉布斯能降低。G_eq 在不变点处有斜率突变（熵突变 = 潜热）。</p>
           </Panel>
