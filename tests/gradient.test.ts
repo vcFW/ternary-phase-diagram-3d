@@ -5,8 +5,10 @@ it('解析梯度 gradTsat 与中心差分一致（全部预设、全部固相，
   for (const p of PRESETS) {
     const d = new PhaseDiagram(p.params);
     let worst = 0;
+    let seed = 12345;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
     for (let k = 0; k < 300; k++) {
-      const a = 0.05 + 0.9 * Math.random(), b = (0.9 - 0.9 * a + 0.05) * Math.random() + 0.02; const c = 1 - a - b; if (c < 0.02) continue;
+      const a = 0.05 + 0.9 * rnd(), b = (0.9 - 0.9 * a + 0.05) * rnd() + 0.02; const c = 1 - a - b; if (c < 0.02) continue;
       const x: [number, number, number] = [a, b, c];
       for (let si = 0; si < d.ns; si++) {
         const g = d.th.gradTsat(si, x); if (!g) continue;
@@ -15,7 +17,8 @@ it('解析梯度 gradTsat 与中心差分一致（全部预设、全部固相，
           const xp: any = x.map((v, i) => v + h * dir[i]), xm: any = x.map((v, i) => v - h * dir[i]);
           const fd = (d.th.Tsat(si, xp) - d.th.Tsat(si, xm)) / (2 * h);
           const an = g[0] * dir[0] + g[1] * dir[1] + g[2] * dir[2];
-          if (Number.isFinite(fd) && d.th.Tsat(si, x) > 1) worst = Math.max(worst, Math.abs(fd - an) / (1 + Math.abs(fd)));
+          // 只比较两侧都有定义（T_s > 0）的点：T_s = 0 处是分段定义的边界
+          if (Number.isFinite(fd) && d.th.Tsat(si, x) > 1 && d.th.Tsat(si, xp) > 1 && d.th.Tsat(si, xm) > 1) worst = Math.max(worst, Math.abs(fd - an) / (1 + Math.abs(fd)));
         }
       }
     }

@@ -258,7 +258,7 @@
 .wsx {
   height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--bg);
 }
 
@@ -449,16 +449,6 @@
   border-radius: 0;
   background: var(--white);
 }
-.fig3d-dock {
-  flex: none;
-  height: 236px;
-  border-top: 1px solid var(--gray-81);
-}
-.fig3d-dock .dock {
-  border: 0;
-  border-radius: 0;
-  height: 100%;
-}
 .fig2d .view {
   height: 100%;
 }
@@ -506,50 +496,6 @@
 }
 .f2-tiptxt.dim {
   fill: var(--gray-42);
-}
-
-/* ---------- 模式条 ---------- */
-.modebar {
-  flex: none;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  padding: 5px 8px;
-  border-top: 1px solid var(--gray-81);
-  background: var(--gray-98);
-  font-size: var(--fs-sm);
-}
-.mb-tag {
-  font-weight: 700;
-  padding: 1px 8px;
-  border-radius: 2px;
-  color: var(--white);
-}
-.modebar.comp .mb-tag {
-  background: var(--accent);
-}
-.modebar.cool .mb-tag {
-  background: var(--c-path);
-}
-.mb-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.mb-num {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-weight: 700;
-}
-.mb-slider {
-  flex: 1;
-  min-width: 220px;
-}
-.mb-hint {
-  color: var(--gray-42);
-  font-size: var(--fs-sm);
 }
 
 /* ---------- 检查器 ---------- */
@@ -688,4 +634,86 @@
 }
 .wsx .ws-focus {
   display: none;
+}
+
+/* ---------- 冷却时间轴（全站唯一的冷却播放控件） ---------- */
+.ct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--gray-81);
+  background: var(--panel2);
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+.ct-btns {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.ct-track {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+  height: 28px;
+}
+.ct-track input[type='range'] {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  width: 100%;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) var(--p, 0%), var(--gray-81) var(--p, 0%));
+  outline: none;
+}
+.ct-track input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--white);
+  border: 1px solid var(--accent);
+  cursor: pointer;
+}
+.ct-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 16px;
+  height: 10px;
+}
+.ct-tick {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--white);
+  background: var(--accent);
+  cursor: pointer;
+}
+.ct-tick.plateau {
+  background: var(--warn);
+}
+.ct-tick.cur {
+  box-shadow: 0 0 0 2px var(--blue-82);
+}
+.ct-T {
+  flex: none;
+  min-width: 96px;
+  text-align: right;
+}
+.ct-ev {
+  flex: 0 1 220px;
+  min-width: 0;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -116,7 +116,6 @@ export interface AppState {
   selection: Selection | null;
   tab: Tab;
   focus3d: boolean;
-  dockOpen: boolean;
   tourNote: string;
   /** 三维相机位姿（跨页面保持） */
   camera: CameraPose | null;
@@ -146,7 +145,6 @@ export interface AppState {
   setSel: (s: Selection | null) => void;
   setTab: (t: Tab) => void;
   setFocus: (b: boolean) => void;
-  setDockOpen: (b: boolean) => void;
   setIsoOn: (b: boolean) => void;
   setVertOn: (b: boolean) => void;
   setTour: (s: string) => void;
@@ -181,7 +179,13 @@ export interface Overlays {
   /** 恒温下相邻相区的方向探测 */
   nbr: boolean;
 }
-export const defaultOverlays = (): Overlays => ({ read: true, vec: false, eq: true, grad: true, frame: true, path: true, trail: true, nbr: false });
+/** 叠加层预设：基本（默认，只显示平衡相点 / 连结线与液相轨迹）→ 几何（再加读数线、成分向量、∇T、界线标架）→ 全部 */
+export const OVERLAY_PRESETS: Record<'basic' | 'geometry' | 'all', { label: string; title: string; set: Overlays }> = {
+  basic: { label: '基本', title: '平衡相点 + 连结线 + 液相轨迹（默认）', set: { read: false, vec: false, eq: true, grad: false, frame: false, path: true, trail: false, nbr: false } },
+  geometry: { label: '几何', title: '再加读数线、成分向量、∇T、界线标架', set: { read: true, vec: true, eq: true, grad: true, frame: true, path: true, trail: false, nbr: false } },
+  all: { label: '全部', title: '全部叠加层', set: { read: true, vec: true, eq: true, grad: true, frame: true, path: true, trail: true, nbr: true } },
+};
+export const defaultOverlays = (): Overlays => ({ ...OVERLAY_PRESETS.basic.set });
 
 export interface CameraPose {
   pos: [number, number, number];
@@ -274,7 +278,6 @@ export const useStore = create<AppState>((set, get) => {
   selection: null,
   tab: 'iso',
   focus3d: false,
-  dockOpen: true,
   tourNote: '',
   camera: null,
   mode: 'composition',
@@ -378,7 +381,6 @@ export const useStore = create<AppState>((set, get) => {
   setSel: (selection) => set({ selection }),
   setTab: (tab) => set({ tab }),
   setFocus: (focus3d) => set({ focus3d }),
-  setDockOpen: (dockOpen) => set({ dockOpen }),
   setIsoOn: (isoOn) => set({ isoOn }),
   setVertOn: (vertOn) => set({ vertOn }),
   setTour: (tourNote) => set({ tourNote }),

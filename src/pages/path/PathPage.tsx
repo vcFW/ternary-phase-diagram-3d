@@ -5,7 +5,7 @@ import type { PhaseDiagram } from '../../core/diagram';
 import { conservationResidual } from '../../math/lever';
 import { fmtNum } from '../../math/linalg';
 import { phaseRule, phaseRuleText } from '../../math/phaseRule';
-import { usePlayback } from '../../panels/CoolingDock';
+import { CoolingTransport } from '../../panels/CoolingTransport';
 import { useScheil } from '../../state/asyncCompute';
 import { invariantAnalyses } from '../../state/derived';
 import { useStore } from '../../state/store';
@@ -13,7 +13,6 @@ import { AnalysisLayout, PageTitle, useSection, type Section } from '../../viz/P
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot, type Series } from '../../viz/XYPlot';
 import { Eq, KV, MatrixView, Panel, Prov } from '../../viz/MathView';
-import { SliderRow } from '../../ui/controls';
 import { COLOR } from '../../ui/tokens';
 
 const SECTIONS: Section[] = [
@@ -24,7 +23,6 @@ const SECTIONS: Section[] = [
 
 export default function PathPage() {
   const cur = useSection(SECTIONS);
-  usePlayback();
   return (
     <AnalysisLayout page="path" sections={SECTIONS} current={cur} note={<>总成分 x₀ 在封闭体系中固定不变；随温度演化的是液相成分 x_L 与各相分数。</>}>
       {cur === 'equilibrium' && <EquilibriumSection />}
@@ -51,10 +49,7 @@ function EquilibriumSection() {
   const trace = useStore((s) => s.trace);
   const idx = useStore((s) => s.idx);
   const setIdx = useStore((s) => s.setIdx);
-  const playing = useStore((s) => s.playing);
-  const setPlaying = useStore((s) => s.setPlaying);
   const eq = useStore((s) => s.eq);
-  const T = useStore((s) => s.T);
   const xi = useStore((s) => s.xi);
   const sym = d.params.components.map((c) => c.symbol);
   const S = trace.samples;
@@ -95,13 +90,7 @@ function EquilibriumSection() {
                 }}
               </TernaryPlot>
             </div>
-            <div className="row">
-              <button className="btn sm" onClick={() => { if (idx >= S.length - 1) setIdx(0); setPlaying(!playing); }}>{playing ? '暂停' : '播放'}</button>
-              <button className="btn sm" onClick={() => { const nx = trace.events.find((e) => e.index > idx + 0.5); if (nx) setIdx(nx.index); }}>下一事件</button>
-              <span className="grow" />
-              <span className="mono">{cel(T, 1)}{xi >= 0 ? ` · 平台 ξ = ${(xi * 100).toFixed(0)}%` : ''}</span>
-            </div>
-            <SliderRow label="进度" labelWidth={36} value={idx} min={0} max={S.length - 1} step={1} digits={0} format={() => `t = ${tNow.toFixed(1)}`} onChange={setIdx} />
+            <CoolingTransport />
           </Panel>
           <Panel title="当前时刻的守恒方程" prov="math">
             <Eq>

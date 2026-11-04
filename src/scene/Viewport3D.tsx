@@ -35,10 +35,8 @@ export function Viewport3D() {
   const setVertOn = useStore((s) => s.setVertOn);
   const [hint, setHint] = useState(true);
   const cutaway = useStore((s) => s.layers.cutaway);
-  const dockOpen = useStore((s) => s.dockOpen);
   const surfaceColor = useStore((s) => s.layers.surfaceColor);
   const range = d.tRange();
-  const setDockOpen = useStore((s) => s.setDockOpen);
   const setLayers = useStore((s) => s.setLayers);
 
   useEffect(() => {
@@ -110,7 +108,6 @@ export function Viewport3D() {
         <button className={vertOn ? 'on' : ''} onClick={() => setVertOn(!vertOn)}>垂直面</button>
         <button className={cutaway ? 'on' : ''} onClick={() => setLayers({ cutaway: !cutaway })} title="隐藏等温面以上的液相面，直接看到等温截面与其下的相图">剖切</button>
         <span className="sep" />
-        <button className={dockOpen ? 'on' : ''} onClick={() => setDockOpen(!dockOpen)} title="显示/隐藏底部冷却过程栏">冷却栏</button>
         <button onClick={snap} title="导出当前三维视图为 PNG">截图</button>
       </div>
       <div className="vp-legend">

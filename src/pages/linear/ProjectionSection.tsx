@@ -7,7 +7,7 @@ import { useStore } from '../../state/store';
 import { Axo3D, type Surface } from '../../viz/Axo3D';
 import { PageTitle } from '../../viz/PageLayout';
 import { Derivation, Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
-import { Segmented, SliderRow } from '../../ui/controls';
+import { Segmented } from '../../ui/controls';
 import { LocalParam } from '../../ui/LocalParam';
 import { COLOR } from '../../ui/tokens';
 
@@ -19,7 +19,6 @@ export function ProjectionSection() {
   const d = useStore((s) => s.diagram);
   const x0 = useStore((s) => s.x0);
   const T = useStore((s) => s.T);
-  const setT = useStore((s) => s.setT);
   const { Tmin, Tmax } = d.tRange();
   const [T2, setT2] = useState(() => Math.min(Tmax, T + 150));
   const [step, setStep] = useState(50);
@@ -69,7 +68,7 @@ export function ProjectionSection() {
                 );
               }}
             </Axo3D>
-            <SliderRow label="状态 q₁ 的 T" labelWidth={92} value={toC(T)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color={COLOR.stateX0} onChange={(v) => setT(toK(v))} />
+            <div className="small">状态 q₁ 的温度 T = <b className="mono">{toC(T).toFixed(1)} °C</b>（顶栏全局温度；在顶栏修改）</div>
             <LocalParam label="状态 q₂ 的 T′" labelWidth={92} value={toC(T2)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color={COLOR.accent} onChange={(v) => setT2(toK(v))} />
             <div className="callout">
               q₁ = ({fmtNum(x0[0], 3)}, {fmtNum(x0[1], 3)}, {toC(T).toFixed(0)} °C) 与 q₂ = ({fmtNum(x0[0], 3)}, {fmtNum(x0[1], 3)}, {toC(T2).toFixed(0)} °C)

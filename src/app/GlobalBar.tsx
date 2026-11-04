@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { cel, regionName, solidColor, toC, toK } from '../core/colors';
+import { regionName, solidColor, toC, toK } from '../core/colors';
 import { getPreset, PRESETS } from '../core/presets';
 import { phaseRule, phaseRuleText } from '../math/phaseRule';
 import { useStore } from '../state/store';
@@ -68,12 +68,12 @@ export function GlobalBar({ page }: { page: string }) {
           冷却凝固
         </button>
       </div>
-      <div className={`gbar-field comp ${mode === 'cooling' ? 'locked' : ''}`} title={mode === 'cooling' ? '冷却凝固模式：总成分固定' : undefined}>
+      <div className={`gbar-field comp ${mode === 'cooling' ? 'locked' : ''}`} title={mode === 'cooling' ? '冷却凝固模式：总成分固定（封闭体系）；切换到"成分探索"才能修改' : undefined}>
         <span>x₀{mode === 'cooling' ? ' 🔒' : ''}</span>
         {([0, 1, 2] as const).map((i) => (
           <span key={i} className="gbar-num" style={{ ['--c' as string]: solidColor(i) } as React.CSSProperties}>
             <i>{sym[i]}</i>
-            <NumField value={x0[i] * 100} min={0} max={100} step={1} digits={1} width={44} disabled={mode === 'cooling'} onCommit={(v) => setComp(i, v / 100)} />
+            {mode === 'cooling' ? <span className="gbar-ro mono">{(x0[i] * 100).toFixed(1)}</span> : <NumField value={x0[i] * 100} min={0} max={100} step={1} digits={1} width={44} onCommit={(v) => setComp(i, v / 100)} />}
           </span>
         ))}
         <span className="dim">%</span>
@@ -99,7 +99,6 @@ export function GlobalBar({ page }: { page: string }) {
       <button className="gbtn" onClick={copy} title="复制包含当前页面与物理状态的深链接">
         {copied ? '已复制' : '复制链接'}
       </button>
-      <span className="gbar-T mono" title="当前温度">{cel(T, 1)}</span>
       {notice && showNotice && <div className="gbar-notice" onClick={() => setShowNotice(false)}>{notice.text}</div>}
     </header>
   );

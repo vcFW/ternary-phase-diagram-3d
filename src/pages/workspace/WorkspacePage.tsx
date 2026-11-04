@@ -1,23 +1,23 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { cel, solidColor, toC, toK } from '../../core/colors';
+import { cel } from '../../core/colors';
 import type { Comp } from '../../core/types';
 import { analyzePoint } from '../../math/pointAnalysis';
-import { CoolingDock } from '../../panels/CoolingDock';
-import { ExamplesCard, LayersCard, SectionCard, SystemCard } from '../../panels/Sidebar';
+import { CoolingTransport } from '../../panels/CoolingTransport';
+import { ExamplesCard, SectionCard } from '../../panels/Sidebar';
 import { VerticalView } from '../../panels/VerticalView';
 import { Viewport3D } from '../../scene/Viewport3D';
-import { useStore, type Overlays, type View2D } from '../../state/store';
-import { NumField, SliderRow } from '../../ui/controls';
+import { OVERLAY_PRESETS, useStore, type Overlays, type View2D } from '../../state/store';
 import { PhaseFigure2D } from './PhaseFigure2D';
 import { Inspector } from './Inspector';
 import { navigate } from '../../app/router';
 
 /**
  * 页面 1 · 相图工作台（MATLAB 式科学计算界面）。
- *   工具条：交互模式 | 二维视图 | 叠加层 | 截面 / 三维图层 / 典型成分 / 体系 下拉面板
- *   图 1：交互式二维相图（拖动 x₀、单击界线 / 不变点）       图 2：三维相图（同步的状态点、截面）
- *   模式条：成分探索（x₀ 可变，T 为参数）/ 冷却凝固（x₀ 固定，T 为驱动变量）
- *   检查器：相平衡 · 反应 · 几何与向量 · 稳定性 · 数学推导 · 演化 · 选中对象
+ *   全局状态（体系 / 模式 / x₀ / T / 热力学参数）只在顶栏修改；本页不再放重复控件。
+ *   工具条：视图 | 叠加层 | 截面与示例 | 转到分析
+ *   图 1：交互式二维相图（拖动 x₀、单击界线 / 不变点）       图 2：三维相图（自带视角 / 图层工具条）
+ *   冷却模式：底部为全站唯一的冷却时间轴（CoolingTransport）
+ *   检查器：相平衡 · 推导 · 选中对象 · 说明
  */
 
 const OVERLAY_LABELS: { k: keyof Overlays; label: string; title: string }[] = [
@@ -40,9 +40,6 @@ export default function WorkspacePage() {
   const mode = useStore((s) => s.mode);
   const view = useStore((s) => s.view2d);
   const setView = useStore((s) => s.setView2d);
-  const ov = useStore((s) => s.overlays);
-  const setOv = useStore((s) => s.setOverlays);
-  const setMode = useStore((s) => s.setMode);
   const focus = useStore((s) => s.focus3d);
   const setFocus = useStore((s) => s.setFocus);
   const setSel = useStore((s) => s.setSel);
@@ -83,19 +80,7 @@ export default function WorkspacePage() {
   return (
     <div className={`wsx ${focus ? 'focus' : ''} mode-${mode}`}>
       <div className="tstrip">
-        <TGroup label="模式">
-          <div className="tbtns">
-            <TBtn on={mode === 'composition'} onClick={() => setMode('composition')} title="改变总成分 x₀（温度为参数）">
-              <b>成分探索</b>
-              <small>x₀ 可变</small>
-            </TBtn>
-            <TBtn on={mode === 'cooling'} onClick={() => setMode('cooling')} title="总成分固定，温度下降">
-              <b>冷却凝固</b>
-              <small>x₀ 固定</small>
-            </TBtn>
-          </div>
-        </TGroup>
-        <TGroup label="二维视图">
+        <TGroup label="视图">
           <div className="tbtns">
             {(['iso', 'proj', 'vert'] as View2D[]).map((v) => (
               <TBtn key={v} on={view === v} onClick={() => setView(v)}>
@@ -105,49 +90,32 @@ export default function WorkspacePage() {
           </div>
         </TGroup>
         <TGroup label="叠加层">
-          <div className="tchecks">
-            {OVERLAY_LABELS.map((o) => (
-              <label key={o.k} title={o.title}>
-                <input type="checkbox" checked={ov[o.k]} onChange={(e) => setOv({ [o.k]: e.target.checked })} />
-                {o.label}
-              </label>
-            ))}
+          <div className="tbtns">
+            <Drop label="叠加层">
+              <OverlayMenu />
+            </Drop>
           </div>
         </TGroup>
-        <TGroup label="设置">
+        <TGroup label="截面与示例">
           <div className="tbtns">
-            <Drop label="体系">
-              <SystemCard />
+            <Drop label="截面设置">
+              <SectionCard />
             </Drop>
             <Drop label="典型成分">
               <ExamplesCard />
-            </Drop>
-            <Drop label="截面">
-              <SectionCard />
-            </Drop>
-            <Drop label="三维图层">
-              <LayersCard />
             </Drop>
           </div>
         </TGroup>
         <TGroup label="转到分析">
           <div className="tbtns">
-            <TBtn onClick={() => navigate('linear', 'lever')}>
+            <TBtn onClick={() => navigate('linear', 'lever')} title="线性方程组：杠杆 / 重心规则">
               <b>线性方程组</b>
             </TBtn>
-            <TBtn onClick={() => navigate('thermo', 'ternary')}>
+            <TBtn onClick={() => navigate('thermo', 'ternary')} title="三元公切面与吉布斯能最小化">
               <b>公切面</b>
             </TBtn>
-            <TBtn onClick={() => navigate('path')}>
+            <TBtn onClick={() => navigate('path')} title="平衡冷却逐步推演">
               <b>凝固路径</b>
-            </TBtn>
-          </div>
-        </TGroup>
-        <span className="grow" />
-        <TGroup label="布局">
-          <div className="tbtns">
-            <TBtn on={focus} onClick={() => setFocus(!focus)} title="只显示两幅图">
-              <b>{focus ? '还原' : '专注图形'}</b>
             </TBtn>
           </div>
         </TGroup>
@@ -162,9 +130,11 @@ export default function WorkspacePage() {
             <button className="mfig-tb" title="取消选中的界线 / 不变点" onClick={() => setSel(null)}>
               ⊘
             </button>
+            <button className="mfig-tb" title={focus ? '还原三栏布局' : '专注图形：只显示两幅图'} onClick={() => setFocus(!focus)}>
+              {focus ? '⤡' : '⤢'}
+            </button>
           </header>
           <div className="mfig-body">{view === 'vert' ? <VerticalView /> : <PhaseFigure2D an={an} trail={hist.map((h) => h.x)} />}</div>
-          <ModeBar />
         </section>
 
         <section className="mfig fig3d">
@@ -175,11 +145,6 @@ export default function WorkspacePage() {
           <div className="mfig-body stage">
             <Viewport3D />
           </div>
-          {mode === 'cooling' && (
-            <div className="fig3d-dock">
-              <CoolingDock />
-            </div>
-          )}
         </section>
 
         <aside className="mfig insp-wrap">
@@ -190,62 +155,33 @@ export default function WorkspacePage() {
           <Inspector an={an} history={hist} />
         </aside>
       </div>
+      {mode === 'cooling' && <CoolingTransport />}
     </div>
   );
 }
 
-function ModeBar() {
-  const d = useStore((s) => s.diagram);
-  const x0 = useStore((s) => s.x0);
-  const T = useStore((s) => s.T);
-  const mode = useStore((s) => s.mode);
-  const setComp = useStore((s) => s.setComp);
-  const setT = useStore((s) => s.setT);
-  const playing = useStore((s) => s.playing);
-  const setPlaying = useStore((s) => s.setPlaying);
-  const trace = useStore((s) => s.trace);
-  const idx = useStore((s) => s.idx);
-  const setIdx = useStore((s) => s.setIdx);
-  const xi = useStore((s) => s.xi);
-  const range = d.tRange();
-  const sym = d.params.components.map((c) => c.symbol);
-  if (mode === 'composition')
-    return (
-      <div className="modebar comp">
-        <span className="mb-tag">成分探索</span>
-        <span className="mb-field">
-          x₀
-          {([0, 1, 2] as const).map((i) => (
-            <span key={i} className="mb-num" style={{ color: solidColor(i) }}>
-              {sym[i]}
-              <NumField value={x0[i] * 100} min={0} max={100} step={0.5} digits={1} width={46} onCommit={(v) => setComp(i, v / 100)} />
-            </span>
-          ))}
-          %
-        </span>
-        <div className="mb-slider">
-          <SliderRow label="截面温度（参数）" labelWidth={104} value={toC(T)} min={Math.floor(toC(range.Tmin))} max={Math.ceil(toC(range.Tmax))} step={1} unit="°C" onChange={(v) => setT(toK(v))} />
-        </div>
-        <span className="mb-hint">拖动图中 x₀ · 单击界线 / 不变点查看推导</span>
-      </div>
-    );
-  const S = trace.samples;
+/** 叠加层菜单：三个预设（基本 / 几何 / 全部）+ 逐项复选 */
+function OverlayMenu() {
+  const ov = useStore((s) => s.overlays);
+  const setOv = useStore((s) => s.setOverlays);
+  const same = (p: Overlays) => (Object.keys(p) as (keyof Overlays)[]).every((k) => p[k] === ov[k]);
   return (
-    <div className="modebar cool">
-      <span className="mb-tag">冷却凝固</span>
-      <span className="mb-field mono" title="封闭体系：总成分不随冷却改变">
-        x₀ 🔒 {sym.map((s, i) => `${s} ${(x0[i] * 100).toFixed(1)}`).join(' · ')}
-      </span>
-      <button className="btn sm" onClick={() => { if (idx >= S.length - 1) setIdx(0); setPlaying(!playing); }}>
-        {playing ? '❚❚ 暂停' : '▶ 冷却'}
-      </button>
-      <button className="btn sm" onClick={() => { const nx = trace.events.find((e) => e.index > idx + 0.5); if (nx) setIdx(nx.index); }}>
-        下一事件 ⏭
-      </button>
-      <div className="mb-slider">
-        <SliderRow label="温度（驱动变量）" labelWidth={104} value={toC(T)} min={Math.floor(toC(S[S.length - 1].T))} max={Math.ceil(toC(S[0].T))} step={0.5} unit="°C" onChange={(v) => setT(toK(v))} />
+    <div className="ovmenu">
+      <div className="ov-presets">
+        {(Object.keys(OVERLAY_PRESETS) as (keyof typeof OVERLAY_PRESETS)[]).map((k) => (
+          <button key={k} className={`tbtn ${same(OVERLAY_PRESETS[k].set) ? 'on' : ''}`} onClick={() => setOv(OVERLAY_PRESETS[k].set)} title={OVERLAY_PRESETS[k].title}>
+            <b>{OVERLAY_PRESETS[k].label}</b>
+          </button>
+        ))}
       </div>
-      <span className="mb-hint">{xi >= 0 ? `不变反应平台：T 不变，反应进度 ξ = ${(xi * 100).toFixed(0)}%` : '移动的是液相成分 x_L（蓝），不是 x₀'}</span>
+      <div className="tchecks">
+        {OVERLAY_LABELS.map((o) => (
+          <label key={o.k} title={o.title}>
+            <input type="checkbox" checked={ov[o.k]} onChange={(e) => setOv({ [o.k]: e.target.checked })} />
+            {o.label}
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

@@ -199,10 +199,6 @@
   border-color: var(--blue-68);
   color: var(--white);
 }
-.gbar-T {
-  color: var(--white);
-  font-weight: 600;
-}
 .gbar-pop {
   position: relative;
 }
@@ -237,8 +233,7 @@
 @media (max-width: 1100px) {
   .gbar-state span,
   .gbar-page,
-  .gbar-page + .gbar-sep,
-  .gbar-T {
+  .gbar-page + .gbar-sep {
     display: none;
   }
   .gbar {
@@ -290,4 +285,13 @@
   opacity: 0.6;
   transition: opacity 0.15s;
   pointer-events: none;
+}
+
+/* 冷却模式下 x₀ 只读文本（不是灰掉的输入框） */
+.gbar-ro {
+  display: inline-block;
+  min-width: 44px;
+  padding: 2px 4px;
+  color: var(--blue-92);
+  text-align: right;
 }
