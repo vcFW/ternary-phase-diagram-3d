@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { fmtNum, type Mat } from '../math/linalg';
 
 /**
@@ -127,17 +127,27 @@ export interface Step {
   body: ReactNode;
 }
 
-/** 逐步推导：可单步前进 / 后退，或全部展开 */
-export function Derivation({ steps, title, initial }: { steps: Step[]; title?: string; initial?: 'all' | 'step' }) {
-  const [mode, setMode] = useState<'all' | 'step'>(initial ?? 'step');
+/**
+ * 逐步推导。默认"摘要"：已知 + 前几步 + 结论（共 ≤ 4 步时即全部）；可切换为"逐步"（单步前进 / 后退）或"全部"。
+ */
+export function Derivation({ steps, title, initial }: { steps: Step[]; title?: string; initial?: 'all' | 'step' | 'brief' }) {
+  const [mode, setMode] = useState<'all' | 'step' | 'brief'>(initial ?? 'brief');
   const [k, setK] = useState(steps.length - 1);
-  const shown = mode === 'all' ? steps.length : Math.min(steps.length, k + 1);
+  // 摘要：前 3 步 + 全部"结果"步；其余折叠为一行提示
+  const briefIdx = new Set<number>();
+  steps.forEach((st, i) => {
+    if (i < 3 || st.kind === 'result') briefIdx.add(i);
+  });
+  const brief = steps.length <= 4 ? steps.map((_, i) => i) : [...briefIdx].sort((p, q) => p - q);
+  const list = mode === 'all' ? steps.map((_, i) => i) : mode === 'brief' ? brief : steps.slice(0, Math.min(steps.length, k + 1)).map((_, i) => i);
+  const hidden = steps.length - brief.length;
   return (
     <div className="deriv">
       <div className="deriv-head">
         {title && <b>{title}</b>}
         <span className="grow" />
         <div className="seg sm">
+          <button className={mode === 'brief' ? 'on' : ''} onClick={() => setMode('brief')} title="已知 + 前几步 + 结论">摘要</button>
           <button className={mode === 'step' ? 'on' : ''} onClick={() => { setMode('step'); setK(0); }}>逐步</button>
           <button className={mode === 'all' ? 'on' : ''} onClick={() => setMode('all')}>全部</button>
         </div>
@@ -150,16 +160,34 @@ export function Derivation({ steps, title, initial }: { steps: Step[]; title?: s
         )}
       </div>
       <ol className="deriv-list">
-        {steps.slice(0, shown).map((s, i) => (
-          <li key={i} className={`st ${s.kind} ${mode === 'step' && i === shown - 1 ? 'cur' : ''}`}>
-            <span className="st-kind">{STEP_NAME[s.kind]}</span>
-            <div className="st-body">
-              {s.title && <div className="st-title">{s.title}</div>}
-              {s.body}
-            </div>
-          </li>
-        ))}
+        {list.map((i, n) => {
+          const s = steps[i];
+          const gap = mode === 'brief' && n > 0 && i - list[n - 1] > 1;
+          return (
+            <Fragment key={i}>
+              {gap && (
+                <li className="st-gapli">
+                  <button className="st-gap" onClick={() => setMode('all')} title="展开全部步骤">
+                    ⋯ 省略 {i - list[n - 1] - 1} 步（展开全部）
+                  </button>
+                </li>
+              )}
+              <li className={`st ${s.kind} ${mode === 'step' && n === list.length - 1 ? 'cur' : ''}`}>
+                <span className="st-kind">{STEP_NAME[s.kind]}</span>
+                <div className="st-body">
+                  {s.title && <div className="st-title">{s.title}</div>}
+                  {s.body}
+                </div>
+              </li>
+            </Fragment>
+          );
+        })}
       </ol>
+      {mode === 'brief' && hidden > 0 && (
+        <button className="st-more" onClick={() => setMode('all')}>
+          展开全部 {steps.length} 步 →
+        </button>
+      )}
     </div>
   );
 }

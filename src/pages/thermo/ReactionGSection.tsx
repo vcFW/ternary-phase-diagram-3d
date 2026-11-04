@@ -5,8 +5,9 @@ import { invariantAnalyses } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
-import { Eq, M, Panel, Prov } from '../../viz/MathView';
+import { Panel, Prov } from '../../viz/MathView';
 import { COLOR, SERIES } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 const PAL: readonly string[] = SERIES;
 
@@ -86,7 +87,7 @@ export function ReactionGSection() {
       <div className="cols c2" style={{ marginTop: 10 }}>
         <Panel title="两者如何联系" prov="math">
           <p>在不变点，四相共切面 μ：每相 Gᵢ = μ·cᵢ。于是</p>
-          <Eq>ΔG_r = Σ νᵢ Gᵢ = μ·(Σ νᵢ cᵢ) = μ·(Nν) = 0</Eq>
+          <TeXBlock>{String.raw`\Delta G_r = \sum_i \nu_i G_i = \mu\cdot\Big(\sum_i \nu_i c_i\Big) = \mu\cdot(N\nu) = 0`}</TeXBlock>
           <p>
             —— 守恒（Nν = 0）与公切面一起，<b>推出</b>不变点温度处 ΔG_r = 0。表中两列温度一致正是这一点的数值验证。
             离开 T_inv，ΔG_r = ΔH_r − TΔS_r（本模型 ΔCp = 0），降温时 ΔG_r &lt; 0 ⇔ ΔS_r &lt; 0（消耗液相放出熵 / 潜热）。
@@ -100,7 +101,7 @@ export function ReactionGSection() {
           <p className="note">
             <Prov k="unknown" /> 本模型不含动力学（形核、扩散），因此不能预测过冷度或反应速率。
           </p>
-          <p className="note">当前 T = {cel(T, 1)}。<M>ΔG_r</M> 的单位为每摩尔液相。</p>
+          <p className="note">当前 T = {cel(T, 1)}。<TeX>{String.raw`\Delta G_r`}</TeX> 的单位为每摩尔液相。</p>
         </Panel>
       </div>
     </>

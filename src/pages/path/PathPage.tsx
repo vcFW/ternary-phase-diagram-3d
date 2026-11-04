@@ -13,8 +13,9 @@ import { useStore } from '../../state/store';
 import { AnalysisLayout, PageTitle, useSection, type Section } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot, type Series } from '../../viz/XYPlot';
-import { Eq, KV, MatrixView, Panel, Prov } from '../../viz/MathView';
+import { KV, MatrixView, Panel, Prov } from '../../viz/MathView';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock } from '../../viz/TeX';
 
 const SECTIONS: Section[] = [
   { id: 'equilibrium', title: '平衡冷却逐步推演', sub: '守恒方程 · 事件 · 反应矩阵' },
@@ -95,9 +96,7 @@ function EquilibriumSection() {
             <CoolingTransport />
           </Panel>
           <Panel title="当前时刻的守恒方程" prov="math">
-            <Eq>
-              x₀ = {eq.phases.map((p) => `${fmtNum(p.frac, 4)}·${p.id}`).join(' + ')}
-            </Eq>
+            <TeXBlock>{`x_0 = ${eq.phases.map((p) => `${fmtNum(p.frac, 4)}\\,\\mathrm{${p.id}}`).join(' + ')}`}</TeXBlock>
             <MatrixView
               name="[C | x₀]"
               M={[0, 1, 2].map((i) => [...eq.phases.map((p) => p.x[i]), x0[i]])}
@@ -256,7 +255,7 @@ function ScheilSection() {
           </Panel>
           <Panel title="Scheil 的数学" prov="math">
             <p>每一温度步：把剩余液相当作新的总成分求平衡，x₀⁽ᵏ⁺¹⁾ = x_L⁽ᵏ⁾，f_L⁽ᵏ⁺¹⁾ = f_L⁽ᵏ⁾·f_L(局部)。守恒仍成立，但只对"液相 + 当步析出物"成立 —— 先前的固相被移出了方程。</p>
-            <Eq>f_L(k+1)·x_L(k+1) + Σ Δnₛ(k)·cₛ = f_L(k)·x_L(k)</Eq>
+            <TeXBlock>{String.raw`f_L^{(k+1)} x_L^{(k+1)} + \sum \Delta n_s^{(k)} c_s = f_L^{(k)} x_L^{(k)}`}</TeXBlock>
           </Panel>
         </div>
       </div>

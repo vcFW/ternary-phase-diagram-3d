@@ -8,10 +8,11 @@ import { analyzeReaction } from '../../math/reaction';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, Handle, TernaryPlot, type TriMap } from '../../viz/TernaryPlot';
-import { Eq, KV, M, Panel, Prov } from '../../viz/MathView';
+import { KV, Panel, Prov } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
 import { Layers5 } from './RulesPage';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 const PT = (m: TriMap, x: Comp) => m.px(x);
 
@@ -84,10 +85,10 @@ export function LeverRule() {
           geo={<p>c₀ 是 c_α、c_β 的凸组合：线段上的点 ↔ 权重在 [0,1] 内；延长线上的点 ↔ 某个权重为负。</p>}
           math={
             <>
-              <Eq>f_α c_α + f_β c_β = c₀,　f_α + f_β = 1</Eq>
+              <TeXBlock>{String.raw`f_\alpha c_\alpha + f_\beta c_\beta = c_0,\quad f_\alpha + f_\beta = 1`}</TeXBlock>
               <p>
-                消去 f_β：<M>c₀ − c_β = f_α (c_α − c_β)</M>。左边向量与 (c_α − c_β) 平行 ⇒ 三点共线（直线规则）；取模长 ⇒
-                <M> f_α = |c₀ − c_β| / |c_α − c_β|</M>（杠杆规则）。矩阵形式下 A 为 3×2，b ∈ col(A) ⇔ 共线；否则最小二乘残差 &gt; 0。
+                消去 f_β：<TeX>{String.raw`c_0 - c_\beta = f_\alpha (c_\alpha - c_\beta)`}</TeX>。左边向量与 (c_α − c_β) 平行 ⇒ 三点共线（直线规则）；取模长 ⇒
+                <TeX>{String.raw`f_\alpha = \frac{|c_0 - c_\beta|}{|c_\alpha - c_\beta|}`}</TeX>（杠杆规则）。矩阵形式下 A 为 3×2，b ∈ col(A) ⇔ 共线；否则最小二乘残差 &gt; 0。
               </p>
             </>
           }
@@ -172,7 +173,7 @@ export function GravityRule() {
           geo={<p>三条边的延长线把平面分成 7 个区域，每个区域对应 λ 的一种符号模式：(+,+,+) 1 个，(+,+,−) 型 3 个，(+,−,−) 型 3 个。不存在 (−,−,−)，因为 Σλ = 1。</p>}
           math={
             <>
-              <Eq>λ = A⁻¹ b,　A = [[c_iA], [c_iB], [1, 1, 1]],　λᵢ = Sᵢ / S</Eq>
+              <TeXBlock>{String.raw`\lambda = A^{-1} b,\quad A = \begin{bmatrix} c_{1A} & c_{2A} & c_{3A} \\ c_{1B} & c_{2B} & c_{3B} \\ 1 & 1 & 1 \end{bmatrix},\quad \lambda_i = S_i / S`}</TeXBlock>
               <p>Cramer 法则把每个 λᵢ 写成"把第 i 个顶点换成 P 后的有向面积"与总面积之比。P 越过与顶点 i 相对的边 ⇔ 子三角形翻转 ⇔ λᵢ 变号。</p>
             </>
           }
@@ -264,9 +265,7 @@ export function RatioRule() {
                 }}
               </TernaryPlot>
             </div>
-            <Eq>
-              x(t) = (1 − t)·e_{sym[v]} + t·x₀ ⇒ x_{sym[j]}(t) / x_{sym[k]}(t) = x₀_{sym[j]} / x₀_{sym[k]} = {fmtNum(x0[j] / (x0[k] || 1e-12), 4)}
-            </Eq>
+            <TeXBlock>{`x(t) = (1-t)\\,e_{${sym[v]}} + t\\,x_0 \\;\\Rightarrow\\; \\frac{x_{${sym[j]}}(t)}{x_{${sym[k]}}(t)} = \\frac{x_{0,${sym[j]}}}{x_{0,${sym[k]}}} = ${fmtNum(x0[j] / (x0[k] || 1e-12), 4)}`}</TeXBlock>
             <p>
               线性代数形式：该直线 = {'{'}x : x₀_{sym[k]}·x_{sym[j]} − x₀_{sym[j]}·x_{sym[k]} = 0{'}'} ∩ {'{'}Σx = 1{'}'}，即 1×3 行向量的零空间与约束平面之交。
               向体系加入（或析出）纯组元 {sym[v]} 时，成分点只能沿这条直线移动。
@@ -314,9 +313,9 @@ export function RatioRule() {
           geo={<p>两条规则说的是同一件事：向混合物中加入或移走某一固定成分的物质，成分点沿着通过该成分点的直线移动。</p>}
           math={
             <>
-              <Eq>x₀ = f_s x_s + (1 − f_s) x_L ⇒ x_L = (x₀ − f_s x_s) / (1 − f_s)</Eq>
+              <TeXBlock>{String.raw`x_0 = f_s x_s + (1 - f_s) x_L \;\Rightarrow\; x_L = \frac{x_0 - f_s x_s}{1 - f_s}`}</TeXBlock>
               <p>
-                对 f_s 求导：<M>dx_L/df_s = (x_L − x_s)/(1 − f_s)</M>。方向向量始终平行于 x_L − x_s，且 x_L 不断远离 x_s ⇒ 路径为直线射线。
+                对 f_s 求导：<TeX>{String.raw`\frac{dx_L}{df_s} = \frac{x_L - x_s}{1 - f_s}`}</TeX>。方向向量始终平行于 x_L − x_s，且 x_L 不断远离 x_s ⇒ 路径为直线射线。
                 f_s 由温度决定（模型的饱和条件），而路径的<b>形状</b>只由守恒决定。
               </p>
             </>

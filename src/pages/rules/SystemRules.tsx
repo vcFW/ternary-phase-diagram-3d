@@ -13,10 +13,11 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
-import { Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
+import { KV, MatrixView, Panel, Prov } from '../../viz/MathView';
 import { Chip } from '../../ui/controls';
 import { Layers5 } from './RulesPage';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 // ===================================================================== 结晶路径与终点
 export function PathRule() {
@@ -82,7 +83,7 @@ export function PathRule() {
           geo={<p>副三角形是低温下固相吉布斯能点集的下凸包刻面：总成分落在哪个刻面上，最终就由哪三个固相组成；它们与液相共存的唯一温度就是对应的不变点。</p>}
           math={
             <>
-              <p>最终态：<M>x₀ = Σ fₛ cₛ, fₛ ≥ 0</M> —— 只有包含 x₀ 的三角形给出非负解（重心规则）。</p>
+              <p>最终态：<TeX>{String.raw`x_0 = \sum_s f_s c_s,\ f_s \ge 0`}</TeX> —— 只有包含 x₀ 的三角形给出非负解（重心规则）。</p>
               <p>液相在终态前最后与这三个固相共存：四相平衡 ⇒ F = 4 − 4 = 0，温度与液相成分唯一 ⇒ 终点 = 该三元不变点。</p>
               <p>中间阶段：每一步都满足 x₀ = f_L x_L + Σ fₛ cₛ，路径由守恒 + 饱和条件逐段确定（详见"凝固路径与反应推演"）。</p>
             </>
@@ -198,9 +199,9 @@ export function PhaseRule() {
           geo={<p>强度变量空间 (T, μ_A, μ_B, μ_C)（恒压）是 4 维的；每增加一个共存相就多一个超平面约束，可移动的方向（零空间）减少一维。</p>}
           math={
             <>
-              <Eq>Sφ dT − Vφ dP + Σᵢ xφᵢ dμᵢ = 0,　φ = 1 … P</Eq>
+              <TeXBlock>{String.raw`S^{\varphi}\,dT - V^{\varphi}\,dP + \sum_i x_i^{\varphi}\,d\mu_i = 0,\quad \varphi = 1\ldots P`}</TeXBlock>
               <p>未知量 (dT, dP, dμ₁…dμ_C) 共 C + 2 个，方程 P 个。若行线性无关，rank = P，由秩–零化度定理</p>
-              <Eq>F = dim ker = (C + 2) − P</Eq>
+              <TeXBlock>{String.raw`F = \dim\ker = (C + 2) - P`}</TeXBlock>
               <p>恒压时去掉 dP 一列，F = C + 1 − P。</p>
             </>
           }
@@ -352,9 +353,9 @@ export function InvariantRule() {
             geo={<p>重心位 / 交叉位 / 共轭位（见"重心规则"）。拖动左图中的液相点越过三角形的边，分类随之改变。</p>}
             math={
               <>
-                <Eq>N ν = 0,　N = [x_L | c_α | c_β | c_γ] ∈ R³ˣ⁴</Eq>
+                <TeXBlock>{String.raw`N\nu = 0,\quad N = [\,x_L \mid c_\alpha \mid c_\beta \mid c_\gamma\,] \in \mathbb R^{3\times 4}`}</TeXBlock>
                 <p>
-                  三固相不共线 ⇒ rank N = 3 ⇒ dim ker N = 1。取 ν_L = −1：<M>Σνₛcₛ = x_L</M>，即 νₛ 恰为 x_L 关于固相三角形的重心坐标 ——
+                  三固相不共线 ⇒ rank N = 3 ⇒ dim ker N = 1。取 ν_L = −1：<TeX>{String.raw`\sum \nu_s c_s = x_L`}</TeX>，即 νₛ 恰为 x_L 关于固相三角形的重心坐标 ——
                   "反应系数的符号"与"液相点的位置"是同一个数学对象的两种读法。
                 </p>
               </>
@@ -369,59 +370,49 @@ export function InvariantRule() {
           />
         </div>
       </div>
+      <GlossaryNote />
     </>
   );
 }
 
-// ===================================================================== 二级定理
-export function ErjiNote() {
+// ===================================================================== 术语说明
+/** 规则页末尾的术语说明：术语表 + “二级定理”考证（保留检索记录与“请提供出处”） */
+export function GlossaryNote() {
   return (
-    <>
-      <PageTitle title="“二级定理”：术语考证" desc="先核实含义，不臆造定义。" />
+    <section className="gloss">
+      <h3>术语说明</h3>
       <div className="cols c2">
-        <Panel title="核实结果" prov="unknown">
-          <p>
-            在三元相图教材、讲义与中文网络资料中检索"二级定理"（2026-11 检索），<b>没有找到</b>该名称在相图文献中的标准定义或出处。
-            常见中文教材中三元相图的规则一般称为：连线规则、切线规则、重心规则（重心位 / 交叉位 / 共轭位）、三角形规则、等含量 / 等比例规则、背向线规则、杠杆规则、相区接触规则等。
-          </p>
-          <p>因此本平台<b>不给出</b>"二级定理"的定义。以下是最可能被这样称呼的已确立概念，请对照你所用教材的上下文判断：</p>
+        <Panel title="本平台使用的术语（含教材别名）" prov="assume">
           <table className="grid">
             <thead>
               <tr>
-                <th>候选概念</th>
-                <th>可能的联系</th>
-                <th>本平台位置</th>
+                <th>术语</th>
+                <th>别名</th>
+                <th>符号 / 反应</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>相区接触规则（Palatnik–Landau）：相邻相区的相数差为 1（点接触除外）</td>
-                <td>"相差一级"的说法</td>
-                <td>相律（秩–零化度）一节可推出：越过一个边界，P 变化 1，F 变化 1</td>
-              </tr>
-              <tr>
-                <td>副三角形（二级 / 次级三角形）划分与三角形规则</td>
-                <td>"二级"可能指"次级（secondary）三角形"</td>
-                <td>结晶路径规则与结晶终点</td>
-              </tr>
-              <tr>
-                <td>Alkemade 连线规则（又称连线定理）</td>
-                <td>界线与"二元"连线的关系</td>
-                <td>连线规则 · Alkemade 定理</td>
-              </tr>
-              <tr>
-                <td>二级相变（Ehrenfest 分类）</td>
-                <td>名称相近，但与三元相图几何规则无关</td>
-                <td>不在本平台范围内</td>
-              </tr>
+              {Object.values(TERMS).map((t) => (
+                <tr key={t.name}>
+                  <td>{t.name}</td>
+                  <td>{t.aliases.join('、') || '—'}</td>
+                  <td className="mono">{[('symbol' in t ? t.symbol : ''), ('reaction' in t ? t.reaction : '')].filter(Boolean).join(' · ') || '—'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </Panel>
-        <Panel title="请协助确认" prov="assume">
-          <p>如果能提供该术语出现的教材名称、章节或原句，可以据此核对并把它加入"相图规则与定理"中，按五层结构给出推导与交互验证。</p>
-          <p className="note">参考检索来源：烟台大学 MOOC《三元相图》讲义；百度百科"三元相图"；CSDN《冶金物理化学：典型二元相图与三元相图》；西安建筑科技大学《相图基础》讲义。均未出现"二级定理"一词的定义。</p>
+        <Panel title="“二级定理”：先核实含义，不臆造定义" prov="unknown">
+          <p>
+            在三元相图教材、讲义与中文网络资料中检索"二级定理"（2026-11 检索），<b>没有找到</b>该名称在相图文献中的标准定义或出处。
+            常见中文教材中的规则一般称为：连线规则、切线规则、重心规则（重心位 / 交叉位 / 共轭位）、三角形规则、等比例规则、背向线规则、杠杆规则、相区接触规则等。
+            因此本平台<b>不给出</b>"二级定理"的定义。最可能被这样称呼的已确立概念：相区接触规则（Palatnik–Landau，相邻相区相数差 1，见相律一节）、副三角形（"次级三角形"）划分与三角形规则（见结晶路径规则）、Alkemade 连线规则（见连线规则）；而"二级相变（Ehrenfest 分类）"名称相近，但与三元相图几何规则无关。
+          </p>
+          <p className="note">
+            <Prov k="assume" /> 请协助确认：如果能提供该术语出现的教材名称、章节或原句，可据此核对并按五层结构加入。参考检索来源：烟台大学 MOOC《三元相图》讲义；百度百科"三元相图"；CSDN《冶金物理化学：典型二元相图与三元相图》；西安建筑科技大学《相图基础》讲义，均未出现该词的定义。
+          </p>
         </Panel>
       </div>
-    </>
+    </section>
   );
 }

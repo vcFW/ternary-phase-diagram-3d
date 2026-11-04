@@ -276,9 +276,15 @@ input {
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--panel);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  max-width: 100%;
 }
 .seg button {
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: transparent;
   border: 0;
   border-right: 1px solid var(--line);

@@ -362,31 +362,65 @@ table.grid td.num {
   background: var(--red-96);
 }
 .layer5 {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
-.layer5 > .lk {
-  padding: 7px 8px;
-  background: var(--panel2);
+.layer5 > details {
   border-bottom: 1px solid var(--line);
+}
+.layer5 > details:last-child {
+  border-bottom: 0;
+}
+.layer5 > details > summary {
+  padding: 7px 10px;
+  background: var(--panel2);
   font-weight: 600;
   font-size: var(--fs-sm);
   color: var(--dim);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
 }
-.layer5 > .lv {
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--line);
+.layer5 > details > summary::-webkit-details-marker {
+  display: none;
+}
+.layer5 > details > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 14px;
+  transition: transform 0.1s;
+}
+.layer5 > details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.layer5 > details > .lv {
+  padding: 7px 10px 9px 24px;
   display: flex;
   flex-direction: column;
   gap: 5px;
   min-width: 0;
 }
-.layer5 > .lk:nth-last-child(2),
-.layer5 > .lv:last-child {
-  border-bottom: 0;
+.st-gap,
+.st-more {
+  display: block;
+  width: 100%;
+  margin: 2px 0;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px dashed var(--line2);
+  border-radius: var(--radius);
+  color: var(--dim);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+.st-gap:hover,
+.st-more:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.st-more {
+  margin-top: 6px;
 }
 .subtabs {
   display: flex;
@@ -532,4 +566,36 @@ table.grid td.num {
   white-space: normal;
   max-width: 560px;
   cursor: pointer;
+}
+
+/* 规则页末尾的术语说明 */
+.gloss {
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.gloss h3 {
+  margin: 0 0 8px;
+  font-size: var(--fs-lg);
+}
+
+/* KaTeX 公式 */
+.tex-block {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  overflow-x: auto;
+}
+.tex-block .katex-display {
+  margin: 0.2em 0;
+  text-align: left;
+}
+.tex-block .eqn-note {
+  color: var(--dim);
+  font-size: var(--fs-sm);
+}
+.st-gapli {
+  list-style: none;
+  padding: 2px 0;
 }

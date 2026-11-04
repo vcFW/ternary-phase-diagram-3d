@@ -8,9 +8,10 @@ import { usePointAnalysis } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, Handle, TernaryPlot } from '../../viz/TernaryPlot';
-import { Derivation, Eq, KV, M, MatrixView, Panel, Prov, VecView } from '../../viz/MathView';
+import { Derivation, KV, MatrixView, Panel, Prov, VecView } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 /**
  * 成分向量：为什么一个物理状态可以写成向量？
@@ -88,18 +89,18 @@ export function VectorsSection() {
               </TernaryPlot>
             </div>
             {view === 'affine' ? (
-              <Eq>x₀ = A + x_B (B − A) + x_C (C − A) = x_A·A + x_B·B + x_C·C,&nbsp;&nbsp; x_A + x_B + x_C = 1</Eq>
+              <TeXBlock>{String.raw`x_0 = A + x_B (B - A) + x_C (C - A) = x_A A + x_B B + x_C C,\quad x_A + x_B + x_C = 1`}</TeXBlock>
             ) : (
-              <Eq>x_i = h_i / h　（h_i 为到顶点 i 对边的垂直距离，h 为三角形的高）</Eq>
+              <TeXBlock note="（h_i 为到顶点 i 对边的垂直距离，h 为三角形的高）">{String.raw`x_i = h_i / h`}</TeXBlock>
             )}
             <p className="note">拖动红点（或在图中单击）改变全局总成分 x₀。两种读法给出完全相同的数：它们是同一个仿射坐标的两种几何解释。</p>
           </Panel>
           <Panel title="为什么物理状态可以用向量表示" prov="math">
             <p>
-              混合是线性运算：把 m₁ 份成分 c₁ 与 m₂ 份成分 c₂ 混合，总成分 <M>c = (m₁c₁ + m₂c₂)/(m₁ + m₂)</M>。这个式子只用到向量加法与数乘，
+              混合是线性运算：把 m₁ 份成分 c₁ 与 m₂ 份成分 c₂ 混合，总成分 <TeX>{String.raw`c = \frac{m_1 c_1 + m_2 c_2}{m_1 + m_2}`}</TeX>。这个式子只用到向量加法与数乘，
               所以"成分"天然生活在一个向量（更准确地说是仿射）空间里；三角形内部恰好是所有非负权重的凸组合。
             </p>
-            <p>约束 <M>1ᵀx = 1</M> 使 R³ 中的成分落在一个二维平面上 —— 三元成分只有 2 个自由度，再加温度共 3 个：这就是三维相图的由来。</p>
+            <p>约束 <TeX>{String.raw`\mathbf 1^{\mathsf T} x = 1`}</TeX> 使 R³ 中的成分落在一个二维平面上 —— 三元成分只有 2 个自由度，再加温度共 3 个：这就是三维相图的由来。</p>
           </Panel>
         </div>
         <div className="stack">
@@ -111,7 +112,7 @@ export function VectorsSection() {
               <MatrixView name="H" M={H_MAT} colLabels={sym} colColors={[0, 1, 2].map(solidColor)} rowLabels={['u', 'v', '1']} />
               <VecView name="x₀" v={x0} labels={sym} />
             </div>
-            <Eq>[u, v, 1]ᵀ = H·x₀ = [{uv1.map((v) => fmtNum(v, 4)).join(', ')}]ᵀ</Eq>
+            <TeXBlock>{String.raw`[u,v,1]^{\mathsf T} = H x_0 = [` + uv1.map((v) => fmtNum(v, 4)).join(',\\ ') + String.raw`]^{\mathsf T}`}</TeXBlock>
             <KV
               rows={[
                 ['det H', <span className="mono">{fmtNum(det(H_MAT), 6)} = √3/2 ≠ 0</span>],
@@ -139,11 +140,10 @@ export function VectorsSection() {
           </Panel>
           <Derivation
             title="推导：重心坐标的唯一性"
-            initial="all"
             steps={[
               { kind: 'known', body: <>顶点 A、B、C 的平面坐标；目标点 P = (u, v)。</> },
-              { kind: 'govern', body: <Eq>P = x_A A + x_B B + x_C C,&nbsp; x_A + x_B + x_C = 1</Eq> },
-              { kind: 'op', body: <>写成矩阵：<M>H x = [u, v, 1]ᵀ</M>，H 的列为顶点的齐次坐标。</> },
+              { kind: 'govern', body: <TeXBlock>{String.raw`P = x_A A + x_B B + x_C C,\quad x_A + x_B + x_C = 1`}</TeXBlock> },
+              { kind: 'op', body: <>写成矩阵：<TeX>{String.raw`H x = [u, v, 1]^{\mathsf T}`}</TeX>，H 的列为顶点的齐次坐标。</> },
               { kind: 'mid', body: <>det H = 2·S△ABC = √3/2 ≠ 0（顶点不共线）。</> },
               { kind: 'result', body: <>x = H⁻¹[u, v, 1]ᵀ 唯一存在；且 xᵢ = S(P 与另两顶点构成的三角形)/S△ABC（Cramer 法则）。</> },
               { kind: 'phys', body: <>"杠杆规则""重心规则"所用的正是这组坐标 —— 只是把顶点换成了平衡相的成分点（见"相分数的线性方程组"）。</> },

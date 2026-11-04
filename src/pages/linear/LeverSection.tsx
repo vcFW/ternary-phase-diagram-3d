@@ -6,10 +6,11 @@ import { fmtNum, gaussSteps } from '../../math/linalg';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
-import { Derivation, Eq, KV, M, MatrixView, Panel, Prov, type Step } from '../../viz/MathView';
+import { Derivation, KV, MatrixView, Panel, Prov, type Step } from '../../viz/MathView';
 import { Chip, Toggle } from '../../ui/controls';
 import { LocalParam } from '../../ui/LocalParam';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 interface Ph {
   id: string;
@@ -62,7 +63,7 @@ export function LeverSection() {
     ? [
         { kind: 'known', body: <>相成分 {phases.map((p) => `${p.id} = (${p.x.map((v) => fmtNum(v, 3)).join(', ')})`).join('；')}；总成分 c₀ = ({x0.map((v) => fmtNum(v, 3)).join(', ')})，T = {cel(T, 1)}。</> },
         { kind: 'assume', body: <>封闭体系（总量守恒）；各相成分已由平衡计算给定 <Prov k="model" />；求相对数量 f。</> },
-        { kind: 'govern', body: <Eq>Σ fᵢ cᵢ = c₀ (3 行),　Σ fᵢ = 1,　fᵢ ≥ 0</Eq> },
+        { kind: 'govern', body: <TeXBlock>{String.raw`\sum_i f_i c_i = c_0,\quad \sum_i f_i = 1,\quad f_i \ge 0`}</TeXBlock> },
         {
           kind: 'op',
           title: '发现冗余',
@@ -95,7 +96,7 @@ export function LeverSection() {
                 title: 'Cramer 法则 = 面积比',
                 body: (
                   <>
-                    <Eq>fᵢ = det Aᵢ / det A = S(c₀ 替换第 i 个顶点) / S(△)</Eq>
+                    <TeXBlock note="（S(c₀→i)：用 c₀ 替换第 i 个顶点后的三角形面积）">{String.raw`f_i = \frac{\det A_i}{\det A} = \frac{S(c_0 \to i)}{S(\triangle)}`}</TeXBlock>
                     <span className="mono">
                       det Aᵢ = ({r.cramer.map((v) => fmtNum(v, 5)).join(', ')})；面积比 = ({r.areas!.sub.map((s) => fmtNum(s / r.areas!.total, 5)).join(', ')})
                     </span>
@@ -208,7 +209,7 @@ export function LeverSection() {
                 ]}
               />
               <p>
-                κ 衡量成分测量误差被放大到相分数的倍数：<M>‖δf‖/‖f‖ ≤ κ(A)·‖δb‖/‖b‖</M>。连结三角形越扁（接近共线），κ 越大；
+                κ 衡量成分测量误差被放大到相分数的倍数：<TeX>{String.raw`\|\delta f\|/\|f\| \le \kappa(A)\,\|\delta b\|/\|b\|`}</TeX>。连结三角形越扁（接近共线），κ 越大；
                 三点共线时 det A = 0，κ = ∞，相分数不再唯一。
               </p>
               {r.k === 4 && <div className="callout">k = 4：零空间一维，基向量 ({r.nullBasis[0].map((v) => fmtNum(v, 3)).join(', ')}) 正是四相不变反应的系数方向（见"相图规则与定理 · 不变点与反应"）。</div>}

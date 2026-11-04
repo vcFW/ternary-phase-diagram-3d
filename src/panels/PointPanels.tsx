@@ -259,7 +259,7 @@ export function DerivationPanel({ an }: { an: PointAnalysis }) {
       : [{ kind: 'phys' as const, body: <>{an.sens.note}</> }]),
     { kind: 'valid', body: <>封闭体系、恒压、平衡；相分数非负是物理约束（越界即说明相组合错误）。G 模型为示意参数。</> },
   ];
-  return <Derivation title="此点的完整数学描述" steps={steps} initial="all" />;
+  return <Derivation title="此点的完整数学描述" steps={steps} />;
 }
 
 // ===================================================================== 演化

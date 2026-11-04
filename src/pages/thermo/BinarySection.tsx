@@ -5,10 +5,11 @@ import { fmtNum } from '../../math/linalg';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
-import { Derivation, Eq, M, Panel, Prov } from '../../viz/MathView';
+import { Derivation, Panel, Prov } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
 import { LocalParam } from '../../ui/LocalParam';
 import { COLOR, SERIES } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 type Src = 'edge' | 'ss';
 const EDGES: [0 | 1 | 2, 0 | 1 | 2][] = [
@@ -160,9 +161,9 @@ export function BinarySection() {
             title="推导：公切线 ⇔ 化学势相等"
             steps={[
               { kind: 'known', body: <>各相的摩尔吉布斯能 G_φ(x, T)；化学计量相为单点 (x_s, G_s)，固溶体为曲线。总成分 x₀。</> },
-              { kind: 'govern', body: <Eq>min Σ f_φ G_φ(x_φ)　s.t.　Σ f_φ x_φ = x₀,　Σ f_φ = 1,　f_φ ≥ 0</Eq> },
+              { kind: 'govern', body: <TeXBlock>{String.raw`\min \sum_\varphi f_\varphi G_\varphi(x_\varphi)\quad \text{s.t.}\quad \sum_\varphi f_\varphi x_\varphi = x_0,\ \sum_\varphi f_\varphi = 1,\ f_\varphi \ge 0`}</TeXBlock> },
               { kind: 'op', title: '几何', body: <>目标值是"x₀ 处、由若干曲线点的凸组合所能达到的最低 G" —— 正是所有曲线点集的下凸包在 x₀ 处的高度。</> },
-              { kind: 'op', title: '拉格朗日条件', body: <>对 x_α、x_β 求导：<M>G_α′(x_α) = G_β′(x_β) = (G_β − G_α)/(x_β − x_α)</M> —— 同一条直线与两曲线相切。</> },
+              { kind: 'op', title: '拉格朗日条件', body: <>对 x_α、x_β 求导：<TeX>{String.raw`G_\alpha'(x_\alpha) = G_\beta'(x_\beta) = \frac{G_\beta - G_\alpha}{x_\beta - x_\alpha}`}</TeX> —— 同一条直线与两曲线相切。</> },
               { kind: 'mid', body: <>切线在 x = 0、1 处的截距 μ₁ = G − xG′，μ₂ = G + (1 − x)G′ 就是偏摩尔吉布斯能（化学势）。</> },
               { kind: 'result', body: <>公切线 ⇔ μ₁^α = μ₁^β 且 μ₂^α = μ₂^β。两相的成分由切点给出，数量由杠杆规则给出。</> },
               { kind: 'phys', body: <>凸包"填平"了曲线上所有向上凸的部分：分成两相比保持均匀单相更低 —— 相分离的热力学驱动力。</> },

@@ -8,10 +8,11 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
-import { Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
+import { KV, MatrixView, Panel, Prov } from '../../viz/MathView';
 import { LocalParam } from '../../ui/LocalParam';
 import { Layers5 } from './RulesPage';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 function CurvePicker({ d, ci, setCi }: { d: PhaseDiagram; ci: number; setCi: (i: number) => void }) {
   return (
@@ -119,10 +120,10 @@ export function AlkemadeRule() {
           math={
             <>
               <p>三相共存时每相满足 Gibbs–Duhem：</p>
-              <Eq>Sφ dT + Σᵢ xφᵢ dμᵢ = 0,　φ = L, α, β</Eq>
+              <TeXBlock>{String.raw`S^{\varphi}\,dT + \sum_i x_i^{\varphi}\,d\mu_i = 0,\quad \varphi = L,\alpha,\beta`}</TeXBlock>
               <p>写成 G·(dT, dμ)ᵀ = 0。若 x_L = (1−λ)x_α + λx_β，则</p>
-              <Eq>row_L − (1−λ)row_α − λ·row_β = [ΔS, 0, 0, 0]</Eq>
-              <p>其中 <M>ΔS = S_L − (1−λ)S_α − λS_β</M> 为该拟二元熔化熵（&gt; 0）。于是 ΔS·dT = 0 ⇒ <b>dT = 0</b>：交点处温度对界线弧长的导数为零。再由该点两侧液相分别位于连线两侧、反应方向相反可知它是极大。</p>
+              <TeXBlock>{String.raw`\mathrm{row}_L - (1-\lambda)\,\mathrm{row}_\alpha - \lambda\,\mathrm{row}_\beta = [\Delta S, 0, 0, 0]`}</TeXBlock>
+              <p>其中 <TeX>{String.raw`\Delta S = S_L - (1-\lambda)S_\alpha - \lambda S_\beta`}</TeX> 为该拟二元熔化熵（&gt; 0）。于是 ΔS·dT = 0 ⇒ <b>dT = 0</b>：交点处温度对界线弧长的导数为零。再由该点两侧液相分别位于连线两侧、反应方向相反可知它是极大。</p>
             </>
           }
           phys={<p>极大点是"α 与 β 一同熔化成同成分液相"的温度；离开它，液相必须偏离连线，任何偏离都需要更低温度才能与 α、β 同时平衡。这是一个纯粹由线性相关性导出的热力学结论。</p>}
@@ -247,11 +248,11 @@ export function TangentRule() {
           math={
             <>
               <p>微分质量守恒（L 为液相量）：</p>
-              <Eq>d(L·x_L) = −dn_a·x_a − dn_b·x_b,　dL = −(dn_a + dn_b)</Eq>
-              <Eq>L·dx_L = −(dn_a + dn_b)·(x* − x_L),　x* = (dn_a x_a + dn_b x_b)/(dn_a + dn_b)</Eq>
+              <TeXBlock>{String.raw`d(L x_L) = -dn_a x_a - dn_b x_b,\quad dL = -(dn_a + dn_b)`}</TeXBlock>
+              <TeXBlock>{String.raw`L\,dx_L = -(dn_a + dn_b)(x^{*} - x_L),\quad x^{*} = \frac{dn_a x_a + dn_b x_b}{dn_a + dn_b}`}</TeXBlock>
               <p>
                 故 x* 在过 x_L、方向为 dx_L 的直线上（τ &lt; 0 一侧），且在直线 ab 上。求交即解 2×2 线性方程组
-                <M> [t | −(b−a)]·(τ, λ)ᵀ = a − p</M>，x* = (1−λ)a + λb ⇒ dn_a : dn_b = (1−λ) : λ。
+                <TeX>{String.raw`[\,t \mid -(b-a)\,]\,(\tau,\lambda)^{\mathsf T} = a - p`}</TeX>，x* = (1−λ)a + λb ⇒ dn_a : dn_b = (1−λ) : λ。
                 λ ∉ [0,1] ⇒ 一个 dn 为负 ⇒ 该固相被回溶。
               </p>
             </>

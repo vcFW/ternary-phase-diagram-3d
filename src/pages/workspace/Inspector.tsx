@@ -190,7 +190,7 @@ function SelTab() {
           <button className="btn sm ghost" onClick={() => setSel(null)}>取消选中</button>
         </div>
         <input type="range" min={0} max={1} step={0.002} value={s / cp.length} style={{ width: '100%' }} onChange={(e) => setSel({ kind: 'curve', id: cv.id, s: parseFloat(e.target.value) * cp.length })} />
-        <Derivation title="界线上该点的推导" steps={steps} initial="all" />
+        <Derivation title="界线上该点的推导" steps={steps} />
       </>
     );
   }
@@ -239,7 +239,7 @@ function SelTab() {
           <button className="btn sm" onClick={() => setT(iv.T + 0.3)}>温度设为 T_inv + 0.3 K</button>
           <button className="btn sm ghost" onClick={() => setSel(null)}>取消选中</button>
         </div>
-        <Derivation title="不变点推导" steps={steps} initial="all" />
+        <Derivation title="不变点推导" steps={steps} />
       </>
     );
   }

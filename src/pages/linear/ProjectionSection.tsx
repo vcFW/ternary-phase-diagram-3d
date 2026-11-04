@@ -6,10 +6,11 @@ import { analyzeMap, P_MAT, project, reconstructT } from '../../math/spaces';
 import { useStore } from '../../state/store';
 import { Axo3D, type Surface } from '../../viz/Axo3D';
 import { PageTitle } from '../../viz/PageLayout';
-import { Derivation, Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
+import { Derivation, KV, MatrixView, Panel, Prov } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
 import { LocalParam } from '../../ui/LocalParam';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 /**
  * 投影 P:(x_A, x_B, T) → (x_A, x_B) 的信息论：rank 2、零空间 span(e_T)。
@@ -157,12 +158,12 @@ export function ProjectionSection() {
             title="推导：为什么温度一般不能从投影唯一恢复"
             steps={[
               { kind: 'known', body: <>独立坐标 q = (x_A, x_B, T) ∈ R³；投影 P q = (x_A, x_B)。</> },
-              { kind: 'govern', body: <>秩–零化度定理：<M>dim ker P + rank P = 3</M>。</> },
+              { kind: 'govern', body: <>秩–零化度定理：<TeX>{String.raw`\dim\ker P + \operatorname{rank} P = 3`}</TeX>。</> },
               { kind: 'op', body: <>P 的前两列为单位向量、第三列为 0 ⇒ rank P = 2，ker P = span(e_T)。</> },
               { kind: 'mid', body: <>P(q + t·e_T) = P q 对任意 t 成立：纤维是竖直直线。</> },
               { kind: 'result', body: <>P 不是单射 ⇒ 不存在左逆；温度不能只由投影恢复。</> },
               { kind: 'op', title: '加入约束', body: <>若已知 q 在曲面 {'{'}T = T_liq(x){'}'} 上，则纤维与曲面的交点为 (x, T_liq(x))。液相面 = max_s T_s(x) 是单值函数 ⇒ 交点唯一。</> },
-              { kind: 'result', body: <Eq>P|_液相面 是双射，其逆为 x ↦ (x, T_liq(x))</Eq> },
+              { kind: 'result', body: <TeXBlock note="（P 限制在液相面上是双射，其逆为 x ↦ (x, T_liq(x))）">{String.raw`P|_{\text{liq}} \ \text{bijective}`}</TeXBlock> },
               { kind: 'phys', body: <>二维液相面投影之所以"可读"，是因为读者默认状态在液相面上；等温线就是这个逆映射的离散近似。</> },
               { kind: 'valid', body: <>液相面必须单值（本模型成立）；若存在液–液分层（穹顶），同一成分可能对应多个液相线温度，单射性失效。</> },
             ]}

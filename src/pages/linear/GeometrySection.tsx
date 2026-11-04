@@ -7,10 +7,11 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
-import { Derivation, Eq, KV, M, MatrixView, Panel } from '../../viz/MathView';
+import { Derivation, KV, MatrixView, Panel } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
 import { LocalParam } from '../../ui/LocalParam';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 /**
  * 等温线 = 液相面 T = T_liq(x) 的等值集；界线 = 三维空间曲线 (x(s), T(s)) 的投影。
@@ -86,7 +87,7 @@ export function GeometrySection() {
             />
             <div className="callout warn">
               两者一般不重合（夹角 {Number.isFinite(ang) ? ang.toFixed(0) : '—'}°）：液相不是"顺着最陡的坡往下流"。它的方向由质量守恒
-              <M> x₀ = f_L x_L + f_s x_s </M> 唯一确定 —— x_L 必须在 x_s→x₀ 射线上背离 x_s；温度只决定它沿这条射线走多远。
+              <TeX>{String.raw`x_0 = f_L x_L + f_s x_s`}</TeX> 唯一确定 —— x_L 必须在 x_s→x₀ 射线上背离 x_s；温度只决定它沿这条射线走多远。
             </div>
           </Panel>
           <Derivation
@@ -94,7 +95,7 @@ export function GeometrySection() {
             steps={[
               { kind: 'known', body: <>液相面 T = T_liq(u, v)（本模型中 T_liq = max_s T_s(x) 有闭式解）。</> },
               { kind: 'govern', body: <>等温线 Γ_T₀ = {'{'}(u,v) : T_liq(u,v) = T₀{'}'} = 液相面 ∩ 平面 T = T₀ 的投影。</> },
-              { kind: 'op', body: <>沿 Γ 求导：<M>∇T·(du, dv) = 0</M> ⇒ 等温线切向 ⊥ ∇T。</> },
+              { kind: 'op', body: <>沿 Γ 求导：<TeX>{String.raw`\nabla T \cdot (du, dv) = 0`}</TeX> ⇒ 等温线切向 ⊥ ∇T。</> },
               { kind: 'mid', body: <>相邻等温线（差 ΔT）的间距 ≈ ΔT / |∇T|：线越密，液相面越陡。</> },
               { kind: 'result', body: <>二维图中的"疏密"就是 |∇T| 的离散编码；方向信息由等温线的走向给出。</> },
               { kind: 'valid', body: <>只在同一初晶面内成立；跨越界线时 T_liq 连续但不可导（两张曲面取最大），等温线出现折角。</> },
@@ -167,7 +168,7 @@ export function GeometrySection() {
                 温度不能直接量：被 P 映到零 —— 必须借助等温线、不变点标注或热力学模型。
               </li>
             </ul>
-            <Eq>γ(s) = (x(s), T(s)) ∈ R³　⟶　P∘γ(s) = x(s) ∈ R²</Eq>
+            <TeXBlock>{String.raw`\gamma(s) = (x(s), T(s)) \in \mathbb R^3 \;\longrightarrow\; P\circ\gamma(s) = x(s) \in \mathbb R^2`}</TeXBlock>
             <p className="dim small">提示：上图组元记号 {sym.join('、')}；颜色块表示初晶区（{d.solids.map((q) => q.label).join('、')}）。</p>
           </Panel>
         </div>

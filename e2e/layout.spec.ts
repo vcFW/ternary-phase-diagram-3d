@@ -53,3 +53,35 @@ test('空闲预取后切换页面不再出现加载骨架', async ({ page }) => 
   }
   expect(await page.evaluate(() => (window as unknown as { __skel: number }).__skel)).toBe(0);
 });
+
+/** P3.6：每个分析页的每一节，首屏（1280×800）内能看到标题与结论、主图 / 主表；规则页导航 8 项；分段按钮不折行 */
+test('分析页每节首屏可见主图与结论；规则页导航 8 项；分段按钮不折行', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openPage(page, 'rules', 'binary-incongruent');
+  expect(await page.locator('.ap-side a').count()).toBe(8);
+  const problems: string[] = [];
+  for (const route of ['linear', 'rules', 'thermo', 'path', 'lab']) {
+    await openPage(page, route, 'binary-incongruent');
+    const n = await page.locator('.ap-side a').count();
+    for (let i = 0; i < n; i++) {
+      await page.locator('.ap-side a').nth(i).click();
+      await page.waitForTimeout(350);
+      const label = (await page.locator('.ap-side a').nth(i).innerText()).split('\n')[0];
+      const info = await page.evaluate(() => {
+        const vh = window.innerHeight;
+        const main = document.querySelector('.ap-main')!;
+        const title = main.querySelector('.ap-title');
+        const fig = [...main.querySelectorAll('svg, canvas, table, .plot-box')].find((e) => {
+          const r = e.getBoundingClientRect();
+          return r.height > 40 && r.top < vh - 40;
+        });
+        const segs = [...document.querySelectorAll<HTMLElement>('.seg')].filter((s) => s.scrollHeight > s.clientHeight + 4 || s.getBoundingClientRect().height > 40);
+        return { title: !!title && title.getBoundingClientRect().top < vh, fig: !!fig, wrapped: segs.length };
+      });
+      if (!info.title) problems.push(`${route}/${label}: 首屏无标题 / 结论`);
+      if (!info.fig) problems.push(`${route}/${label}: 首屏无主图 / 主表`);
+      if (info.wrapped) problems.push(`${route}/${label}: 分段按钮折行`);
+    }
+  }
+  expect(problems).toEqual([]);
+});

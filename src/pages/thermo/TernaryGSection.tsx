@@ -10,9 +10,10 @@ import { useStore } from '../../state/store';
 import { Axo3D, type Surface } from '../../viz/Axo3D';
 import { PageTitle } from '../../viz/PageLayout';
 import { cm255, fieldImage, Handle, TernaryPlot } from '../../viz/TernaryPlot';
-import { Derivation, Eq, KV, M, Panel } from '../../viz/MathView';
+import { Derivation, KV, Panel } from '../../viz/MathView';
 import { Segmented } from '../../ui/controls';
 import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 /**
  * 三元公切面：吉布斯能最小化写成线性规划，其对偶变量就是化学势 μ（公切面）。
@@ -209,9 +210,9 @@ export function TernaryGSection() {
             title="推导：最小化、杠杆规则与公切面是同一个问题"
             steps={[
               { kind: 'known', body: <>候选相点 j：成分 c_j、自由能 G_j（固相为点，液相为连续曲面上的点）。</> },
-              { kind: 'govern', title: '原问题', body: <Eq>min_f Σ f_j G_j　s.t.　C f = x₀,　f ≥ 0</Eq> },
-              { kind: 'govern', title: '对偶问题', body: <Eq>max_μ μ·x₀　s.t.　μ·c_j ≤ G_j　∀ j</Eq> },
-              { kind: 'op', body: <>强对偶：最优时 Σ f_j G_j = μ·x₀。互补松弛：<M>f_j &gt; 0 ⇒ G_j = μ·c_j</M>。</> },
+              { kind: 'govern', title: '原问题', body: <TeXBlock>{String.raw`\min_f \sum_j f_j G_j \quad\text{s.t.}\quad C f = x_0,\ f \ge 0`}</TeXBlock> },
+              { kind: 'govern', title: '对偶问题', body: <TeXBlock>{String.raw`\max_\mu\, \mu\cdot x_0 \quad\text{s.t.}\quad \mu\cdot c_j \le G_j\ \ \forall j`}</TeXBlock> },
+              { kind: 'op', body: <>强对偶：最优时 Σ f_j G_j = μ·x₀。互补松弛：<TeX>{String.raw`f_j > 0 \Rightarrow G_j = \mu\cdot c_j`}</TeX>。</> },
               { kind: 'mid', body: <>{'{'}G = μ·x{'}'} 是一张平面；约束 μ·c ≤ G 表示所有相都在平面之上；有正分数的相都在平面上 —— 这就是"公切面"。</> },
               { kind: 'mid', body: <>液相为连续曲面：在切点处 ∇(G_L − μ·x) = 0 ⇒ μᴸᵢ(x_L) = μᵢ（化学势相等）。</> },
               { kind: 'result', body: <>原问题的约束 C f = x₀ 就是杠杆 / 重心规则（线性部分）；对偶约束是热力学稳定性（非线性部分来自 G 的形状）。</> },
