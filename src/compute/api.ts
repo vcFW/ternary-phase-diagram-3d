@@ -59,7 +59,7 @@ export const computeApi = {
     return computeTrace(diagramOf(params), x0);
   },
   scheil(params: SystemParams, x0: Comp): ScheilStep[] {
-    return scheil(diagramOf(params), x0, { dT: 0.5 });
+    return scheil(diagramOf(params), x0);
   },
 };
 

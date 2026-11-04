@@ -10,10 +10,11 @@ import { minimizeGibbs } from './gibbsMin';
 import { combine, phaseFractions } from './lever';
 import { nullSpace, rank, solve } from './linalg';
 import { analyzeReaction, reactionThermo } from './reaction';
+import { scheil } from './scheil';
 import { P_MAT, project, reconstructT } from './spaces';
 
 /**
- * 可复现验证算例（共 8 组）。每个检查项给出：参照（解析解 / 独立数值方法 / 文献公式）、计算值、误差与容差。
+ * 可复现验证算例（共 11 组）。每个检查项给出：参照（解析解 / 独立数值方法 / 文献公式）、计算值、误差与容差。
  * 同一份代码同时被 vitest 自动测试与"数学实验与验证"页面调用。
  */
 export interface Check {
@@ -466,7 +467,53 @@ function case10(): Case {
   };
 }
 
+// ------------------------------------------------------------------ 11
+function case11(): Case {
+  const d = diagrams()['ss-isomorphous'];
+  // 二元（A–B 边）稀溶液极限：B 为溶质，分配系数 k = x_B^S / x_B^L 近似为常数
+  const x0: Comp = [0.97, 0.03, 0];
+  const st = scheil(d, x0);
+  const cB = d.params.components[1];
+  // 理想溶液（液 / 固相同为理想，纯固相基准 G = 0）：RT ln k = ΔH_B (1 − T/Tm_B)
+  const kOf = (T: number) => Math.exp((cB.dH * (1 - T / cB.Tm)) / (R * T));
+  const use = st.filter((s) => s.fL >= 0.1 && s.fL < 1);
+  const ks = use.map((s) => kOf(s.T));
+  const kmin = Math.min(...ks);
+  const kmax = Math.max(...ks);
+  // 经典 Scheil 方程 x_L = x₀ f_L^(k−1)：k 随 T 缓变时，数值解必落在 [x₀ f^(kmax−1), x₀ f^(kmin−1)] 内
+  // 数值 Scheil 是一阶离散（步内固相成分取步末值），自适应步长把相对离散误差控制在约 2%：包络两侧各留 2.5% 余量
+  const DISC = 0.025;
+  let viol = 0;
+  let mid = 0;
+  for (const s of use) {
+    const lo = x0[1] * Math.pow(s.fL, kmax - 1) * (1 - DISC);
+    const hi = x0[1] * Math.pow(s.fL, kmin - 1) * (1 + DISC);
+    viol = Math.max(viol, (lo - s.xL[1]) / s.xL[1], (s.xL[1] - hi) / s.xL[1], 0);
+    mid = Math.max(mid, Math.abs(s.xL[1] - x0[1] * Math.pow(s.fL, (kmin + kmax) / 2 - 1)) / s.xL[1]);
+  }
+  const fmin = Math.min(...use.map((s) => s.fL));
+  // 与固定小步长（0.25 K）Scheil 对照：自适应步长不改变结果
+  const fine = scheil(d, x0, { dT: 0.25 });
+  const fa = st[st.length - 1];
+  const fb = fine[fine.length - 1];
+  const stepDiff = Math.max(0, ...Object.keys(fb.solids).map((k) => Math.abs((fa.solids[k] ?? 0) - fb.solids[k])));
+  return {
+    id: 11,
+    title: 'Scheil 凝固：经典方程 x_L = x₀ f_L^(k−1)（二元稀溶液极限）',
+    basis: 'analytic',
+    basisText: '理想匀晶二元（A–B 边，B 为溶质）：k 由 RT ln k = ΔH_B(1 − T/Tm_B) 解析给出，在凝固温度区间内只缓慢变化；常数 k 时 Gulliver–Scheil 方程是精确解，故数值解应落在以 k 的变化范围为界的解析包络内。',
+    setup: `【演示模型】三元匀晶（理想）体系的 A–B 边，x₀ = ${vec(x0, 2)}；对 f_L ≥ 0.1 的各步比较。`,
+    checks: [
+      chk('k(T) 的变化幅度 k_max − k_min', '解析 k(T)：缓变才可与常数 k 的方程比较', 0, kmax - kmin, 0.06, 4),
+      chk('数值 x_L(B) 越出解析包络（含 2.5% 离散余量）的最大相对量', 'x_L = x₀ f_L^(k−1)，k ∈ [k_min, k_max]', 0, viol, 1e-9, 6),
+      chk('与 k̄ 对应的解析曲线的最大相对偏差', 'x_L = x₀ f_L^(k̄−1)；容差 = ½Δk·ln(1/f_min) + 3%', 0, mid, 0.5 * (kmax - kmin) * Math.log(1 / fmin) + 0.03, 4),
+      { name: '自适应步数', ref: 'Scheil 步长自适应（0.25–10 K）', expected: `≤ 固定 0.25 K 的 ${fine.length} 步`, computed: `${st.length} 步`, err: 0, tol: 0, pass: st.length < fine.length },
+      chk('自适应 vs 固定 0.25 K：累积固相量最大差', '同一模型的步长无关性', 0, stepDiff, 2e-3, 5),
+    ],
+  };
+}
+
 export function runValidation(): Case[] {
-  return [case1(), case2(), case3(), case4(), case5(), case6(), case7(), case8(), case9(), case10()];
+  return [case1(), case2(), case3(), case4(), case5(), case6(), case7(), case8(), case9(), case10(), case11()];
 }
 

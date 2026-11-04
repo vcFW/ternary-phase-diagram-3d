@@ -253,6 +253,7 @@ function ScheilSection() {
                 <tr><th>界面</th><td>—</td><td>局部平衡</td></tr>
                 <tr><th>转熔反应</th><td>按平衡进行</td><td>不发生（被包裹的先析出相不参与）</td></tr>
                 <tr><th>过冷 / 形核</th><td colSpan={2}>均不考虑</td></tr>
+                <tr><th>数值方法</th><td>—</td><td>与 pycalphad 生态 scheil 包（simulate_scheil_solidification）假设一致；自适应步长 0.25–10 K，相集合改变处二分定位事件温度，终凝按不变反应平台一次完成</td></tr>
               </tbody>
             </table>
             <div className="callout warn">

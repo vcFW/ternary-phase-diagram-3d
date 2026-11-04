@@ -242,7 +242,7 @@ describe('Alkemade 定理（数值）', () => {
 
 describe('验证算例（与"数学实验与验证"页面同源）', () => {
   const cases = runValidation();
-  it('共 10 组', () => expect(cases.length).toBe(10));
+  it('共 11 组', () => expect(cases.length).toBe(11));
   for (const c of cases)
     for (const k of c.checks)
       it(`算例 ${c.id} · ${k.name}`, () => {

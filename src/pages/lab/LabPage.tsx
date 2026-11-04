@@ -18,7 +18,7 @@ import { LocalParam } from '../../ui/LocalParam';
 import { COLOR } from '../../ui/tokens';
 
 const SECTIONS: Section[] = [
-  { id: 'validation', title: '验证算例（10 组）', sub: '解析 / 独立数值 / 文献参照' },
+  { id: 'validation', title: '验证算例（11 组）', sub: '解析 / 独立数值 / 文献参照' },
   { id: 'matrix', title: '矩阵实验室', sub: '自定义相点：分数、反应、消元' },
   { id: 'degenerate', title: '退化与病态', sub: '条件数、行列式、误差放大' },
   { id: 'params', title: '参数与示例体系', sub: '可编辑的热力学参数' },

@@ -37,7 +37,7 @@ export function gibbsMinAt(d: PhaseDiagram, x0: Comp, T: number): GMinResult {
 }
 
 export function scheilOf(d: PhaseDiagram, x0: Comp): ScheilStep[] {
-  return memo('scheil', `${d.uid}|${kx(x0)}`, () => scheil(d, x0, { dT: 0.5 }));
+  return memo('scheil', `${d.uid}|${kx(x0)}`, () => scheil(d, x0));
 }
 
 export interface InvariantAnalysis {
