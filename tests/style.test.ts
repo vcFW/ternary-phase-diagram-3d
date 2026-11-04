@@ -42,4 +42,13 @@ describe('设计令牌', () => {
   it('不再存在旧样式文件', () => {
     expect(files.filter((f) => /src\/(styles|shell|workspace)\.css$/.test(f))).toEqual([]);
   });
+
+  it('术语只在 core/terms.ts 中以完整字面量出现', () => {
+    const bad: string[] = [];
+    for (const f of files.filter((x) => /\.tsx?$/.test(x) && !x.endsWith('core/terms.ts'))) {
+      const s = readFileSync(f, 'utf8');
+      for (const lit of ['过渡点（单转熔点）', '三元包晶点（双转熔点）', '三元共晶点（低共熔点）']) if (s.includes(lit)) bad.push(`${f}: ${lit}`);
+    }
+    expect(bad).toEqual([]);
+  });
 });

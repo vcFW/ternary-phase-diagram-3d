@@ -36,3 +36,20 @@ test('检查器只有 4 个标签；被移出的内容可在分析页找到', as
   await page.goto('/#/path/equilibrium?p=binary-incongruent');
   await expect(page.getByText('演化：冷却与成分探索').first()).toBeVisible();
 });
+
+test('空闲预取后切换页面不再出现加载骨架', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openPage(page, 'workspace', 'binary-incongruent');
+  await page.waitForTimeout(3500); // 等待 requestIdleCallback 预取
+  await page.evaluate(() => {
+    (window as unknown as { __skel: number }).__skel = 0;
+    new MutationObserver(() => {
+      if (document.querySelector('.page-skel')) (window as unknown as { __skel: number }).__skel++;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  for (const r of ['linear', 'rules', 'thermo', 'path', 'lab', 'workspace']) {
+    await page.locator(`.nav a[href^="#/${r}"]`).click();
+    await page.waitForTimeout(250);
+  }
+  expect(await page.evaluate(() => (window as unknown as { __skel: number }).__skel)).toBe(0);
+});

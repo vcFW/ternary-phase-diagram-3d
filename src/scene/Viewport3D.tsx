@@ -5,6 +5,7 @@ import type { PhaseDiagram } from '../core/diagram';
 import { LayersCard } from '../panels/Sidebar';
 import { useStore } from '../state/store';
 import { Drop } from '../ui/controls';
+import { TERMS } from '../core/terms';
 import { COLOR } from '../ui/tokens';
 import { PhaseScene, type HoverInfo } from './PhaseScene';
 
@@ -13,12 +14,12 @@ function legendMarks(d: PhaseDiagram): { text: string; color: string; dot?: bool
   const kinds = new Set(d.topo.curves.flatMap((c) => c.pieces.map((p) => p.kind)));
   const pts = new Set(d.topo.invariants.filter((iv) => iv.rank === 'ternary').map((iv) => iv.reaction.type));
   const out: { text: string; color: string; dot?: boolean }[] = [];
-  if (kinds.has('eutectic')) out.push({ text: '共晶线 ▸', color: COLOR.line.eutectic });
-  if (kinds.has('transition')) out.push({ text: '过渡型转熔线 ▸▸', color: COLOR.line.transition });
-  if (kinds.has('peritectic')) out.push({ text: '转熔线 ▸▸', color: COLOR.line.peritectic });
-  if (pts.has('eutectic')) out.push({ text: '共晶点 E', color: COLOR.point.eutectic, dot: true });
-  if (pts.has('transition')) out.push({ text: '过渡点 U', color: COLOR.point.transition, dot: true });
-  if (pts.has('peritectic')) out.push({ text: '包晶点 P', color: COLOR.point.peritectic, dot: true });
+  if (kinds.has('eutectic')) out.push({ text: `${TERMS.eutecticLine.short} ▸`, color: COLOR.line.eutectic });
+  if (kinds.has('transition')) out.push({ text: `过渡型${TERMS.peritecticLine.short} ▸▸`, color: COLOR.line.transition });
+  if (kinds.has('peritectic')) out.push({ text: `${TERMS.peritecticLine.short} ▸▸`, color: COLOR.line.peritectic });
+  if (pts.has('eutectic')) out.push({ text: `${TERMS.eutectic.short} ${TERMS.eutectic.symbol}`, color: COLOR.point.eutectic, dot: true });
+  if (pts.has('transition')) out.push({ text: `${TERMS.transition.short} ${TERMS.transition.symbol}`, color: COLOR.point.transition, dot: true });
+  if (pts.has('peritectic')) out.push({ text: `${TERMS.peritectic.short} ${TERMS.peritectic.symbol}`, color: COLOR.point.peritectic, dot: true });
   out.push({ text: '结晶路径', color: COLOR.path });
   return out;
 }

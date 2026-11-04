@@ -358,3 +358,28 @@
   color: var(--blue-92);
   text-align: right;
 }
+
+/* 页面加载骨架：与页面同布局的灰色占位 */
+.page-skel {
+  height: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg);
+}
+.skel-bar {
+  height: 36px;
+  background: var(--gray-84);
+  border-radius: var(--radius);
+}
+.skel-cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.8fr;
+  gap: 12px;
+}
+.skel-block {
+  background: var(--gray-88);
+  border-radius: var(--radius);
+}

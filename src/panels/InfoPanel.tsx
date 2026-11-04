@@ -1,11 +1,12 @@
 import { cel, phaseColor, regionName } from '../core/colors';
 import { getPreset } from '../core/presets';
 import { useStore } from '../state/store';
+import { TERMS, termFull } from '../core/terms';
 import type { ReactionType } from '../core/types';
 
 const KIND_DESC: Record<ReactionType, string> = {
   eutectic: '共晶型：液相降温时两固相同时析出（L → α + β），单箭头。',
-  transition: '过渡点（单转熔点）：L + α ⇌ β + γ。液相位于相容三角形之外；α 被回溶。',
+  transition: `${termFull(TERMS.transition)}：${TERMS.transition.reaction}。液相位于相容三角形之外；α 被回溶。`,
   peritectic: '转熔型：液相降温时先析出相被回溶、新相析出（L + α → β），双箭头。',
 };
 

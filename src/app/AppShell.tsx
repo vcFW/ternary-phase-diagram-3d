@@ -7,14 +7,49 @@ import { decodeState, encodeState } from '../state/urlState';
 import { getRoute } from './router';
 
 /** 路由级页面：按需加载，三维场景（three.js）只在工作台页面加载 */
-const pages: Record<PageId, React.LazyExoticComponent<() => JSX.Element>> = {
-  workspace: lazy(() => import('../pages/workspace/WorkspacePage')),
-  linear: lazy(() => import('../pages/linear/LinearPage')),
-  rules: lazy(() => import('../pages/rules/RulesPage')),
-  thermo: lazy(() => import('../pages/thermo/ThermoPage')),
-  path: lazy(() => import('../pages/path/PathPage')),
-  lab: lazy(() => import('../pages/lab/LabPage')),
+const loaders: Record<PageId, () => Promise<{ default: () => JSX.Element }>> = {
+  workspace: () => import('../pages/workspace/WorkspacePage'),
+  linear: () => import('../pages/linear/LinearPage'),
+  rules: () => import('../pages/rules/RulesPage'),
+  thermo: () => import('../pages/thermo/ThermoPage'),
+  path: () => import('../pages/path/PathPage'),
+  lab: () => import('../pages/lab/LabPage'),
 };
+const pages = Object.fromEntries((Object.keys(loaders) as PageId[]).map((k) => [k, lazy(loaders[k])])) as Record<PageId, React.LazyExoticComponent<() => JSX.Element>>;
+
+/** 预取页面 chunk（导航项悬停 / 空闲时），切换页面时不再出现加载占位 */
+const prefetched = new Set<PageId>();
+/** 已加载完成的页面组件：直接渲染，绕开 React.lazy（lazy 即使模块已缓存也会先挂起一次、闪出骨架） */
+const loaded: Partial<Record<PageId, () => JSX.Element>> = {};
+export function prefetchPage(id: PageId) {
+  if (prefetched.has(id)) return;
+  prefetched.add(id);
+  loaders[id]()
+    .then((m) => {
+      loaded[id] = m.default;
+    })
+    .catch(() => prefetched.delete(id));
+}
+function prefetchAllWhenIdle() {
+  const run = () => (Object.keys(loaders) as PageId[]).forEach(prefetchPage);
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+  if (ric) ric(run, { timeout: 2500 });
+  else window.setTimeout(run, 1200);
+}
+
+/** 与页面同布局的骨架（标题条 + 灰色占位），代替整页文字“正在加载…” */
+function PageSkeleton({ title }: { title: string }) {
+  return (
+    <div className="page-skel" role="status" aria-label={`正在加载“${title}”`}>
+      <div className="skel-bar" />
+      <div className="skel-cols">
+        <div className="skel-block" />
+        <div className="skel-block" />
+        <div className="skel-block narrow" />
+      </div>
+    </div>
+  );
+}
 
 export const NAV: { id: PageId; no: string; title: string; sub: string; icon: ReactNode }[] = [
   { id: 'workspace', no: '1', title: '相图工作台', sub: '三维空间探索', icon: <path d="M12 3 21 8v8l-9 5-9-5V8z M12 3v18 M3 8l9 5 9-5" /> },
@@ -75,6 +110,9 @@ export function AppShell() {
     return window.innerWidth < 1280;
   });
   useUrlSync();
+  useEffect(() => {
+    prefetchAllWhenIdle();
+  }, []);
   const toggleNav = () => {
     const next = !collapsed;
     setCollapsed(next);
@@ -85,7 +123,7 @@ export function AppShell() {
     }
   };
   const computing = useStore((s) => s.computing);
-  const Page = pages[route.page];
+  const Page = loaded[route.page] ?? pages[route.page];
   const cur = NAV.find((n) => n.id === route.page)!;
   useEffect(() => {
     document.title = `${cur.title} · 三元相图数学分析平台`;
@@ -112,6 +150,8 @@ export function AppShell() {
                 href={`#/${n.id}`}
                 className={route.page === n.id ? 'on' : ''}
                 title={collapsed ? `${n.no}. ${n.title}` : n.sub}
+                onPointerEnter={() => prefetchPage(n.id)}
+                onFocus={() => prefetchPage(n.id)}
                 onClick={(e) => {
                   e.preventDefault();
                   navigate(n.id);
@@ -141,7 +181,7 @@ export function AppShell() {
         <GlobalBar page={cur.title} />
         <div className="page" key={route.page}>
           <ErrorBoundary resetKey={`${route.page}/${route.sub}`}>
-            <Suspense fallback={<div className="page-loading">正在加载“{cur.title}”…</div>}>
+            <Suspense fallback={<PageSkeleton title={cur.title} />}>
               <Page />
             </Suspense>
           </ErrorBoundary>

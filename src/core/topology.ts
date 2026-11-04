@@ -10,6 +10,7 @@ import type {
   Reaction,
   ReactionType,
 } from './types';
+import { INVARIANT_TERM } from './terms';
 
 /**
  * 由热力学模型自动提取液相面拓扑：初晶区、单变线（含类型与降温方向）、不变点（含反应式）、
@@ -392,7 +393,7 @@ export function extractTopology(th: Thermo, N = 150, opts?: { twoLevel?: boolean
       solids: f.s,
       reaction: rx,
       solidX: conjugateSolids(th, f.x, f.s),
-      name: rx.type === 'eutectic' ? '三元共晶点（低共熔点）' : rx.type === 'transition' ? '过渡点（单转熔点）' : '三元包晶点（双转熔点）',
+      name: INVARIANT_TERM[rx.type === 'eutectic' ? 'eutectic' : rx.type === 'transition' ? 'transition' : 'peritectic'].name,
     });
   }
   // 二元点：折线端点位于边界
