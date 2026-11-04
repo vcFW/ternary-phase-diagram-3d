@@ -6,8 +6,11 @@ import { analyzeMap, P_MAT, project, reconstructT } from '../../math/spaces';
 import { useStore } from '../../state/store';
 import { Axo3D, type Surface } from '../../viz/Axo3D';
 import { PageTitle } from '../../viz/PageLayout';
-import { Derivation, Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
-import { Segmented, SliderRow } from '../../ui/controls';
+import { Derivation, KV, MatrixView, Panel, Prov } from '../../viz/MathView';
+import { Segmented } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
+import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 /**
  * 投影 P:(x_A, x_B, T) → (x_A, x_B) 的信息论：rank 2、零空间 span(e_T)。
@@ -17,7 +20,6 @@ export function ProjectionSection() {
   const d = useStore((s) => s.diagram);
   const x0 = useStore((s) => s.x0);
   const T = useStore((s) => s.T);
-  const setT = useStore((s) => s.setT);
   const { Tmin, Tmax } = d.tRange();
   const [T2, setT2] = useState(() => Math.min(Tmax, T + 150));
   const [step, setStep] = useState(50);
@@ -54,21 +56,21 @@ export function ProjectionSection() {
                 const sl = m.p(x0, Tl);
                 return (
                   <>
-                    <line x1={base[0]} y1={base[1]} x2={top[0]} y2={top[1]} stroke="#7e2f8e" strokeWidth={1.6} strokeDasharray="5 3" />
-                    <circle cx={sl[0]} cy={sl[1]} r={5} fill="#77ac30" stroke="#1d2229" />
-                    <circle cx={s1[0]} cy={s1[1]} r={5} fill="#c00000" stroke="#fff" strokeWidth={1.5} />
-                    <circle cx={s2[0]} cy={s2[1]} r={5} fill="#0072bd" stroke="#fff" strokeWidth={1.5} />
-                    <circle cx={base[0]} cy={base[1]} r={4.5} fill="#1d2229" />
-                    <text x={s1[0] + 8} y={s1[1] + 4} className="pt-lab" fill="#c00000">q₁ = (x₀, T)</text>
-                    <text x={s2[0] + 8} y={s2[1] + 4} className="pt-lab" fill="#0072bd">q₂ = (x₀, T′)</text>
-                    <text x={sl[0] - 8} y={sl[1] - 6} className="pt-lab" fill="#2e6b1f" textAnchor="end">液相面交点</text>
+                    <line x1={base[0]} y1={base[1]} x2={top[0]} y2={top[1]} stroke={COLOR.path} strokeWidth={1.6} strokeDasharray="5 3" />
+                    <circle cx={sl[0]} cy={sl[1]} r={5} fill={COLOR.component[2]} stroke={COLOR.ink} />
+                    <circle cx={s1[0]} cy={s1[1]} r={5} fill={COLOR.stateX0} stroke={COLOR.white} strokeWidth={1.5} />
+                    <circle cx={s2[0]} cy={s2[1]} r={5} fill={COLOR.accent} stroke={COLOR.white} strokeWidth={1.5} />
+                    <circle cx={base[0]} cy={base[1]} r={4.5} fill={COLOR.ink} />
+                    <text x={s1[0] + 8} y={s1[1] + 4} className="pt-lab" fill={COLOR.stateX0}>q₁ = (x₀, T)</text>
+                    <text x={s2[0] + 8} y={s2[1] + 4} className="pt-lab" fill={COLOR.accent}>q₂ = (x₀, T′)</text>
+                    <text x={sl[0] - 8} y={sl[1] - 6} className="pt-lab" fill={COLOR.ok} textAnchor="end">液相面交点</text>
                     <text x={base[0] + 8} y={base[1] + 14} className="pt-lab">P(q₁) = P(q₂)</text>
                   </>
                 );
               }}
             </Axo3D>
-            <SliderRow label="状态 q₁ 的 T" labelWidth={92} value={toC(T)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color="#c00000" onChange={(v) => setT(toK(v))} />
-            <SliderRow label="状态 q₂ 的 T′" labelWidth={92} value={toC(T2)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color="#0072bd" onChange={(v) => setT2(toK(v))} />
+            <div className="small">状态 q₁ 的温度 T = <b className="mono">{toC(T).toFixed(1)} °C</b>（顶栏全局温度；在顶栏修改）</div>
+            <LocalParam label="状态 q₂ 的 T′" labelWidth={92} value={toC(T2)} min={Math.ceil(toC(Tmin))} max={Math.floor(toC(Tmax))} step={1} unit="°C" color={COLOR.accent} onChange={(v) => setT2(toK(v))} />
             <div className="callout">
               q₁ = ({fmtNum(x0[0], 3)}, {fmtNum(x0[1], 3)}, {toC(T).toFixed(0)} °C) 与 q₂ = ({fmtNum(x0[0], 3)}, {fmtNum(x0[1], 3)}, {toC(T2).toFixed(0)} °C)
               的投影都是 ({fmtNum(q[0], 3)}, {fmtNum(q[1], 3)}) = ({fmtNum(q2[0], 3)}, {fmtNum(q2[1], 3)})。紫色虚线即纤维 P⁻¹(x_A, x_B)：整条线被压成一个点。
@@ -156,12 +158,12 @@ export function ProjectionSection() {
             title="推导：为什么温度一般不能从投影唯一恢复"
             steps={[
               { kind: 'known', body: <>独立坐标 q = (x_A, x_B, T) ∈ R³；投影 P q = (x_A, x_B)。</> },
-              { kind: 'govern', body: <>秩–零化度定理：<M>dim ker P + rank P = 3</M>。</> },
+              { kind: 'govern', body: <>秩–零化度定理：<TeX>{String.raw`\dim\ker P + \operatorname{rank} P = 3`}</TeX>。</> },
               { kind: 'op', body: <>P 的前两列为单位向量、第三列为 0 ⇒ rank P = 2，ker P = span(e_T)。</> },
               { kind: 'mid', body: <>P(q + t·e_T) = P q 对任意 t 成立：纤维是竖直直线。</> },
               { kind: 'result', body: <>P 不是单射 ⇒ 不存在左逆；温度不能只由投影恢复。</> },
               { kind: 'op', title: '加入约束', body: <>若已知 q 在曲面 {'{'}T = T_liq(x){'}'} 上，则纤维与曲面的交点为 (x, T_liq(x))。液相面 = max_s T_s(x) 是单值函数 ⇒ 交点唯一。</> },
-              { kind: 'result', body: <Eq>P|_液相面 是双射，其逆为 x ↦ (x, T_liq(x))</Eq> },
+              { kind: 'result', body: <TeXBlock note="（P 限制在液相面上是双射，其逆为 x ↦ (x, T_liq(x))）">{String.raw`P|_{\text{liq}} \ \text{bijective}`}</TeXBlock> },
               { kind: 'phys', body: <>二维液相面投影之所以"可读"，是因为读者默认状态在液相面上；等温线就是这个逆映射的离散近似。</> },
               { kind: 'valid', body: <>液相面必须单值（本模型成立）；若存在液–液分层（穹顶），同一成分可能对应多个液相线温度，单射性失效。</> },
             ]}

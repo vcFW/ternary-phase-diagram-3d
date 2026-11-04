@@ -1,27 +1,66 @@
 import { useEffect, useRef, useState } from 'react';
 import { colormapGradient } from '../core/colormap';
 import { cel, phaseColor, regionName, toC } from '../core/colors';
+import type { PhaseDiagram } from '../core/diagram';
+import { LayersCard } from '../panels/Sidebar';
 import { useStore } from '../state/store';
+import { Drop } from '../ui/controls';
+import { useSize } from '../ui/useSize';
+import { TERMS } from '../core/terms';
+import { COLOR } from '../ui/tokens';
 import { PhaseScene, type HoverInfo } from './PhaseScene';
+
+/** 由拓扑生成线 / 点图例：无转熔线、无过渡点的体系不显示相应条目 */
+function legendMarks(d: PhaseDiagram): { text: string; color: string; dot?: boolean }[] {
+  const kinds = new Set(d.topo.curves.flatMap((c) => c.pieces.map((p) => p.kind)));
+  const pts = new Set(d.topo.invariants.filter((iv) => iv.rank === 'ternary').map((iv) => iv.reaction.type));
+  const out: { text: string; color: string; dot?: boolean }[] = [];
+  if (kinds.has('eutectic')) out.push({ text: `${TERMS.eutecticLine.short} ▸`, color: COLOR.line.eutectic });
+  if (kinds.has('transition')) out.push({ text: `过渡型${TERMS.peritecticLine.short} ▸▸`, color: COLOR.line.transition });
+  if (kinds.has('peritectic')) out.push({ text: `${TERMS.peritecticLine.short} ▸▸`, color: COLOR.line.peritectic });
+  if (pts.has('eutectic')) out.push({ text: `${TERMS.eutectic.short} ${TERMS.eutectic.symbol}`, color: COLOR.point.eutectic, dot: true });
+  if (pts.has('transition')) out.push({ text: `${TERMS.transition.short} ${TERMS.transition.symbol}`, color: COLOR.point.transition, dot: true });
+  if (pts.has('peritectic')) out.push({ text: `${TERMS.peritectic.short} ${TERMS.peritectic.symbol}`, color: COLOR.point.peritectic, dot: true });
+  out.push({ text: '结晶路径', color: COLOR.path });
+  return out;
+}
+
+function Icon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+      <path d={d} />
+    </svg>
+  );
+}
+
+function IconBtn({ title, d, on, disabled, onClick }: { title: string; d: string; on?: boolean; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button className={`vp-ib ${on ? 'on' : ''}`} title={title} aria-label={title} disabled={disabled} onClick={onClick}>
+      <Icon d={d} />
+    </button>
+  );
+}
 
 export function Viewport3D() {
   const host = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // 图窗较窄（< 520 px）时图例收进工具条的下拉面板，把宽度还给三维场景
+  const { w: vw } = useSize(rootRef);
+  const narrow = vw > 0 && vw < 520;
   const scene = useRef<PhaseScene | null>(null);
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const d = useStore((s) => s.diagram);
   const sel = useStore((s) => s.selection);
   const setSel = useStore((s) => s.setSel);
   const setTab = useStore((s) => s.setTab);
+  const T = useStore((s) => s.T);
   const isoOn = useStore((s) => s.isoOn);
   const vertOn = useStore((s) => s.vertOn);
   const setIsoOn = useStore((s) => s.setIsoOn);
   const setVertOn = useStore((s) => s.setVertOn);
-  const [hint, setHint] = useState(true);
   const cutaway = useStore((s) => s.layers.cutaway);
-  const dockOpen = useStore((s) => s.dockOpen);
   const surfaceColor = useStore((s) => s.layers.surfaceColor);
   const range = d.tRange();
-  const setDockOpen = useStore((s) => s.setDockOpen);
   const setLayers = useStore((s) => s.setLayers);
 
   useEffect(() => {
@@ -64,6 +103,9 @@ export function Viewport3D() {
     a.click();
   };
 
+  // 图例条目只列当前体系实际存在的界线 / 不变点类型
+  const markLegend = legendMarks(d);
+
   const selText = (() => {
     if (!sel) return null;
     if (sel.kind === 'invariant') {
@@ -76,24 +118,8 @@ export function Viewport3D() {
     return null;
   })();
 
-  return (
-    <div className="viewport">
-      <div className="vp-host" ref={host} onPointerDown={() => setHint(false)} />
-      <div className="vp-toolbar">
-        <button onClick={() => scene.current?.setView('iso')}>默认视角</button>
-        <button onClick={() => scene.current?.setView('top')} title="俯视即液相面投影">俯视</button>
-        <button onClick={() => scene.current?.setView('front')}>正视</button>
-        <button onClick={() => scene.current?.setView('side')}>侧视</button>
-        <button onClick={() => scene.current?.setView('section')} disabled={!vertOn} title="视线垂直于垂直截面">正对截面</button>
-        <span className="sep" />
-        <button className={isoOn ? 'on' : ''} onClick={() => setIsoOn(!isoOn)}>等温面</button>
-        <button className={vertOn ? 'on' : ''} onClick={() => setVertOn(!vertOn)}>垂直面</button>
-        <button className={cutaway ? 'on' : ''} onClick={() => setLayers({ cutaway: !cutaway })} title="隐藏等温面以上的液相面，直接看到等温截面与其下的相图">剖切</button>
-        <span className="sep" />
-        <button className={dockOpen ? 'on' : ''} onClick={() => setDockOpen(!dockOpen)} title="显示/隐藏底部冷却过程栏">冷却栏</button>
-        <button onClick={snap} title="导出当前三维视图为 PNG">截图</button>
-      </div>
-      <div className="vp-legend">
+  const legendBody = (
+    <>
         {surfaceColor === 'temperature' ? (
           <>
             <div className="lg-title">液相面温度 T / °C</div>
@@ -114,13 +140,39 @@ export function Viewport3D() {
             ))}
           </>
         )}
-        <div className="lg-sep" />
-        <div className="lg-row"><i className="ln" style={{ background: '#1d2229' }} /><span>共晶线 ▸</span></div>
-        <div className="lg-row"><i className="ln" style={{ background: '#c00000' }} /><span>转熔线 ▸▸</span></div>
-        <div className="lg-row"><i className="dot" style={{ background: '#0072BD' }} /><span>共晶点 E</span></div>
-        <div className="lg-row"><i className="dot" style={{ background: '#D95319' }} /><span>过渡点 U</span></div>
-        <div className="lg-row"><i className="ln" style={{ background: '#7E2F8E' }} /><span>结晶路径</span></div>
+        {markLegend.length > 0 && <div className="lg-sep" />}
+        {markLegend.map((m) => (
+          <div key={m.text} className="lg-row"><i className={m.dot ? 'dot' : 'ln'} style={{ background: m.color }} /><span>{m.text}</span></div>
+        ))}
+    </>
+  );
+
+  return (
+    <div className="viewport" ref={rootRef} style={{ ['--vp-legend-w' as string]: narrow ? '0px' : '156px' } as React.CSSProperties}>
+      <div className="vp-host" ref={host} />
+      <div className="vp-toolbar" role="toolbar" aria-label="三维视图工具">
+        <IconBtn title="默认视角（等轴测）" onClick={() => scene.current?.setView('iso')} d="M8 2 14 5.5v5L8 14 2 10.5v-5z M8 2v6 M2 5.5 8 8l6-2.5" />
+        <IconBtn title="俯视（即液相面投影）" onClick={() => scene.current?.setView('top')} d="M2 3h12v10H2z M2 8h12 M8 3v10" />
+        <IconBtn title="正视" onClick={() => scene.current?.setView('front')} d="M3 4h10v8H3z" />
+        <IconBtn title="侧视" onClick={() => scene.current?.setView('side')} d="M5 3h6v10H5z" />
+        <IconBtn title="正对截面（视线垂直于垂直截面）" disabled={!vertOn} onClick={() => scene.current?.setView('section')} d="M3 13 6 3h7l-3 10z" />
+        <span className="sep" />
+        <IconBtn title="等温面（可拖动升降温度）" on={isoOn} onClick={() => setIsoOn(!isoOn)} d="M2 10 8 13l6-3-6-3z M2 7l6 3 6-3" />
+        <IconBtn title="垂直截面平面" on={vertOn} onClick={() => setVertOn(!vertOn)} d="M5 2h6v12H5z M8 2v12" />
+        <IconBtn title="剖切：隐藏等温面以上的液相面，直接看到等温截面与其下的相图" on={cutaway} onClick={() => setLayers({ cutaway: !cutaway })} d="M2 13 14 3 M3 3l4 4 M3 13l4-4" />
+        <span className="sep" />
+        <Drop className="vp-ib" panelClass="vp-drop-panel" title="三维图层" label={<Icon d="M8 2 14 5 8 8 2 5z M2 8l6 3 6-3 M2 11l6 3 6-3" />}>
+          <LayersCard />
+        </Drop>
+        {narrow && (
+          <Drop className="vp-ib" panelClass="vp-drop-panel legend" title="图例" label={<Icon d="M3 4h2 M7 4h6 M3 8h2 M7 8h6 M3 12h2 M7 12h6" />}>
+            <div className="vp-legend-pop">{legendBody}</div>
+          </Drop>
+        )}
+        <IconBtn title="导出当前三维视图为 PNG" onClick={snap} d="M2 5h3l1-2h4l1 2h3v8H2z M8 6.5a2.2 2.2 0 1 0 .01 0" />
       </div>
+      <div className="vp-tbadge mono" title="当前等温面温度（在顶栏修改；可拖动三维中的蓝色球 / 水平面）">T = {cel(T)}</div>
+      {!narrow && <div className="vp-legend">{legendBody}</div>}
       {selText && (
         <div className="vp-sel">
           <b>{selText.title}</b>
@@ -129,11 +181,6 @@ export function Viewport3D() {
             <button className="btn sm" onClick={() => setTab('info')}>详细讲解</button>
             <button className="btn sm ghost" onClick={() => setSel(null)}>清除</button>
           </div>
-        </div>
-      )}
-      {hint && (
-        <div className="vp-hint">
-          左键旋转 · 滚轮缩放 · 右键平移　|　拖动<b>蓝色球/水平面</b>升降温度 · 拖动<b>红色状态点</b>改变成分 · 拖动<b>深蓝色截面或其端点</b>平移/旋转垂直截面 · 单击截面取点
         </div>
       )}
       {hover && (

@@ -141,6 +141,14 @@ function dist(a: Comp, b: Comp) {
 export function liquidusGradient(d: PhaseDiagram, x: Comp, h = 1e-4): { g: [number, number]; T: number; si: number } {
   const [u, v] = compToCart(x);
   const L = d.liquidus(x);
+  // 解析梯度（化学计量相：商法则；固溶体：包络定理）；组元含量为 0 等无定义处回退中心差分
+  const ga = d.th.gradTsat(L.si, x);
+  if (ga) {
+    const s3 = Math.sqrt(3) / 2;
+    const gu = -ga[0] + ga[1];
+    const gv = (-0.5 / s3) * ga[0] + (-0.5 / s3) * ga[1] + (1 / s3) * ga[2];
+    if (Number.isFinite(gu) && Number.isFinite(gv)) return { g: [gu, gv], T: L.T, si: L.si };
+  }
   const f = (uu: number, vv: number) => {
     const y = cartToComp(uu, vv);
     if (Math.min(...y) < 0) return NaN;

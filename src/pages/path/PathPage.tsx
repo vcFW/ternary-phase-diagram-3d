@@ -4,14 +4,18 @@ import type { TraceSample } from '../../core/cooling';
 import type { PhaseDiagram } from '../../core/diagram';
 import { conservationResidual } from '../../math/lever';
 import { fmtNum } from '../../math/linalg';
-import { usePlayback } from '../../panels/CoolingDock';
-import { invariantAnalyses, scheilOf } from '../../state/derived';
+import { phaseRule, phaseRuleText } from '../../math/phaseRule';
+import { CoolingTransport } from '../../panels/CoolingTransport';
+import { useScheil } from '../../state/asyncCompute';
+import { EvolutionPanel } from '../../panels/PointPanels';
+import { invariantAnalyses, usePointAnalysis } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { AnalysisLayout, PageTitle, useSection, type Section } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot, type Series } from '../../viz/XYPlot';
-import { Eq, KV, MatrixView, Panel, Prov } from '../../viz/MathView';
-import { SliderRow } from '../../ui/controls';
+import { KV, MatrixView, Panel, Prov } from '../../viz/MathView';
+import { COLOR } from '../../ui/tokens';
+import { TeXBlock } from '../../viz/TeX';
 
 const SECTIONS: Section[] = [
   { id: 'equilibrium', title: '平衡冷却逐步推演', sub: '守恒方程 · 事件 · 反应矩阵' },
@@ -21,7 +25,6 @@ const SECTIONS: Section[] = [
 
 export default function PathPage() {
   const cur = useSection(SECTIONS);
-  usePlayback();
   return (
     <AnalysisLayout page="path" sections={SECTIONS} current={cur} note={<>总成分 x₀ 在封闭体系中固定不变；随温度演化的是液相成分 x_L 与各相分数。</>}>
       {cur === 'equilibrium' && <EquilibriumSection />}
@@ -36,7 +39,7 @@ function fracSeries(d: PhaseDiagram, samples: TraceSample[]): Series[] {
   return ids.map((id) => ({
     id,
     pts: samples.map((s) => [s.t, s.eq.phases.find((p) => p.id === id)?.frac ?? 0] as [number, number]),
-    color: id === 'L' ? '#3a78b5' : phaseColor(d, id),
+    color: id === 'L' ? COLOR.phase.liquid : phaseColor(d, id),
     label: id === 'L' ? '液相 L' : id,
   }));
 }
@@ -48,24 +51,23 @@ function EquilibriumSection() {
   const trace = useStore((s) => s.trace);
   const idx = useStore((s) => s.idx);
   const setIdx = useStore((s) => s.setIdx);
-  const playing = useStore((s) => s.playing);
-  const setPlaying = useStore((s) => s.setPlaying);
   const eq = useStore((s) => s.eq);
-  const T = useStore((s) => s.T);
   const xi = useStore((s) => s.xi);
   const sym = d.params.components.map((c) => c.symbol);
   const S = trace.samples;
   const cur = S[Math.min(S.length - 1, Math.round(idx))];
   const fs = useMemo(() => fracSeries(d, S), [d, S]);
-  const Tc: Series[] = useMemo(() => [{ id: 'T', pts: S.map((s) => [s.t, toC(s.T)] as [number, number]), color: '#1d2229', label: '冷却曲线 T(t)' }], [S]);
+  const Tc: Series[] = useMemo(() => [{ id: 'T', pts: S.map((s) => [s.t, toC(s.T)] as [number, number]), color: COLOR.ink, label: '冷却曲线 T(t)' }], [S]);
   const xl: Series[] = useMemo(() => {
     const L = S.filter((s) => s.eq.phases.some((p) => p.si < 0));
-    return [0, 1, 2].map((i) => ({ id: `x${i}`, pts: L.map((s) => [s.t, s.eq.phases.find((p) => p.si < 0)!.x[i]] as [number, number]), color: ['#d95319', '#0072bd', '#77ac30'][i], label: `x_L(${sym[i]})` }));
+    return [0, 1, 2].map((i) => ({ id: `x${i}`, pts: L.map((s) => [s.t, s.eq.phases.find((p) => p.si < 0)!.x[i]] as [number, number]), color: COLOR.component[i], label: `x_L(${sym[i]})` }));
   }, [S, sym]);
   const res = conservationResidual(eq.phases, x0);
+  const rule = phaseRule(d, eq, x0, xi >= 0);
   const inv = invariantAnalyses(d);
+  const an = usePointAnalysis();
   const tNow = cur?.t ?? 0;
-  const evLines = trace.events.map((e) => ({ x: e.t, color: e.plateau ? '#c00000' : '#7b8490' }));
+  const evLines = trace.events.map((e) => ({ x: e.t, color: e.plateau ? COLOR.stateX0 : COLOR.muted }));
   return (
     <>
       <PageTitle title="平衡冷却逐步推演" desc="每一时刻都满足同一组守恒方程 x₀ = Σ fᵢcᵢ；改变的只是参与方程的相与各相成分。" />
@@ -78,12 +80,12 @@ function EquilibriumSection() {
                   const P = eq.phases.map((p) => m.px(p.x));
                   return (
                     <>
-                      <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke="#7e2f8e" strokeWidth={2.4} />
+                      <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke={COLOR.path} strokeWidth={2.4} />
                       {P.length === 3 && <polygon points={P.map((p) => p.join(',')).join(' ')} className="tri-fill" />}
                       {P.length === 2 && <line x1={P[0][0]} y1={P[0][1]} x2={P[1][0]} y2={P[1][1]} className="lnk" strokeWidth={1.8} />}
                       {P.length === 4 && <polygon points={P.map((p) => p.join(',')).join(' ')} className="tri-fill bad" />}
                       {eq.phases.map((p, k) => (
-                        <circle key={k} cx={P[k][0]} cy={P[k][1]} r={p.si < 0 ? 5 : 4} fill={p.si < 0 ? '#3a78b5' : phaseColor(d, p.id)} stroke="#1d2229" />
+                        <circle key={k} cx={P[k][0]} cy={P[k][1]} r={p.si < 0 ? 5 : 4} fill={p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id)} stroke={COLOR.ink} />
                       ))}
                       <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀（固定）" />
                     </>
@@ -91,40 +93,35 @@ function EquilibriumSection() {
                 }}
               </TernaryPlot>
             </div>
-            <div className="row">
-              <button className="btn sm" onClick={() => { if (idx >= S.length - 1) setIdx(0); setPlaying(!playing); }}>{playing ? '暂停' : '播放'}</button>
-              <button className="btn sm" onClick={() => { const nx = trace.events.find((e) => e.index > idx + 0.5); if (nx) setIdx(nx.index); }}>下一事件</button>
-              <span className="grow" />
-              <span className="mono">{cel(T, 1)}{xi >= 0 ? ` · 平台 ξ = ${(xi * 100).toFixed(0)}%` : ''}</span>
-            </div>
-            <SliderRow label="进度" labelWidth={36} value={idx} min={0} max={S.length - 1} step={1} digits={0} format={() => `t = ${tNow.toFixed(1)}`} onChange={setIdx} />
+            <CoolingTransport />
           </Panel>
           <Panel title="当前时刻的守恒方程" prov="math">
-            <Eq>
-              x₀ = {eq.phases.map((p) => `${fmtNum(p.frac, 4)}·${p.id}`).join(' + ')}
-            </Eq>
+            <TeXBlock>{`x_0 = ${eq.phases.map((p) => `${fmtNum(p.frac, 4)}\\,\\mathrm{${p.id}}`).join(' + ')}`}</TeXBlock>
             <MatrixView
               name="[C | x₀]"
               M={[0, 1, 2].map((i) => [...eq.phases.map((p) => p.x[i]), x0[i]])}
               rowLabels={sym}
               colLabels={[...eq.phases.map((p) => p.id), 'x₀']}
-              colColors={[...eq.phases.map((p) => (p.si < 0 ? '#3a78b5' : phaseColor(d, p.id))), '#1d2229']}
+              colColors={[...eq.phases.map((p) => (p.si < 0 ? COLOR.phase.liquid : phaseColor(d, p.id))), COLOR.ink]}
               aug={eq.phases.length}
             />
             <KV
               rows={[
                 ['f', <span className="mono">({eq.phases.map((p) => fmtNum(p.frac, 5)).join(', ')})</span>],
                 ['残差 ‖Σfc − x₀‖∞ / |Σf − 1| / min f', <span className="mono">{res.mass.toExponential(1)} / {res.norm.toExponential(1)} / {fmtNum(res.min, 4)}</span>],
-                ['P / F', <span className="mono">{eq.phases.length} / {xi >= 0 ? 0 : eq.dof}</span>],
+                ['P / C / F', <span className="mono" title={rule.reason || undefined}>{rule.P} / {rule.C} / {rule.F}</span>],
               ]}
             />
           </Panel>
         </div>
         <div className="stack">
           <Panel title="相分数、冷却曲线与液相成分（横轴：放热进度 t）" prov="model" sub="t ∝ 释放的热量（焓平衡），平台长度 ∝ 潜热">
-            <XYPlot height={190} series={fs} ylim={[0, 1]} xlim={[0, 100]} ylabel="相分数 f" vlines={[...evLines, { x: tNow, color: '#c00000', dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
-            <XYPlot height={160} series={Tc} xlim={[0, 100]} ylabel="T / °C" vlines={[{ x: tNow, color: '#c00000', dash: '' }]} legend={false} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
-            <XYPlot height={160} series={xl} xlim={[0, 100]} ylim={[0, 1]} xlabel="放热进度 t" ylabel="x_L" vlines={[{ x: tNow, color: '#c00000', dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+            <XYPlot height={190} series={fs} ylim={[0, 1]} xlim={[0, 100]} ylabel="相分数 f" vlines={[...evLines, { x: tNow, color: COLOR.stateX0, dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+            <XYPlot height={160} series={Tc} xlim={[0, 100]} ylabel="T / °C" vlines={[{ x: tNow, color: COLOR.stateX0, dash: '' }]} legend={false} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+            <XYPlot height={160} series={xl} xlim={[0, 100]} ylim={[0, 1]} xlabel="放热进度 t" ylabel="x_L" vlines={[{ x: tNow, color: COLOR.stateX0, dash: '' }]} onPick={(x) => setIdx(S.findIndex((s) => s.t >= x))} />
+          </Panel>
+          <Panel title="演化：冷却与成分探索（与工作台检查器同源）" prov="model">
+            {an ? <EvolutionPanel an={an} /> : <p className="dim">计算中…</p>}
           </Panel>
           <Panel title="事件与每一步的数学 / 热力学条件" prov="model">
             <ol className="ev-list">
@@ -143,7 +140,7 @@ function EquilibriumSection() {
                       <p>{e.detail}</p>
                       {after && !e.plateau && e.kind !== 'end' && (
                         <p className="small">
-                          之后：{after.eq.key}，P = {after.eq.phases.length}，F = {after.eq.dof}。
+                          之后：{after.eq.key}，{phaseRuleText(phaseRule(d, after.eq, x0))}。
                           {after.eq.phases.length === 2 && after.eq.phases.some((p) => p.si < 0) && ' 守恒 ⇒ 液相沿 固相→x₀ 射线背离固相（背向线规则）。'}
                           {after.eq.phases.length === 3 && after.eq.phases.some((p) => p.si < 0) && ' F = 1：液相被约束在界线上，由 T 唯一确定。'}
                         </p>
@@ -174,16 +171,16 @@ function ScheilSection() {
   const x0 = useStore((s) => s.x0);
   const setX0 = useStore((s) => s.setX0);
   const trace = useStore((s) => s.trace);
-  const sch = scheilOf(d, x0);
+  const { data: sch, computing: schBusy } = useScheil(d, x0);
   const fin = sch[sch.length - 1];
   const eqFin = trace.finalPhases;
   const ids = Array.from(new Set([...Object.keys(fin.solids), ...eqFin.map((p) => p.id)]));
-  const eqL: Series = { id: 'eqL', pts: trace.samples.map((s) => [toC(s.T), s.eq.phases.find((p) => p.si < 0)?.frac ?? 0] as [number, number]).filter((p) => p[0] <= toC(trace.Tliq) + 1), color: '#3a78b5', label: '平衡：液相分数' };
-  const scL: Series = { id: 'scL', pts: sch.map((s) => [toC(s.T), s.fL] as [number, number]), color: '#c00000', dash: '5 3', label: 'Scheil：剩余液相分数' };
+  const eqL: Series = { id: 'eqL', pts: trace.samples.map((s) => [toC(s.T), s.eq.phases.find((p) => p.si < 0)?.frac ?? 0] as [number, number]).filter((p) => p[0] <= toC(trace.Tliq) + 1), color: COLOR.phase.liquid, label: '平衡：液相分数' };
+  const scL: Series = { id: 'scL', pts: sch.map((s) => [toC(s.T), s.fL] as [number, number]), color: COLOR.stateX0, dash: '5 3', label: 'Scheil：剩余液相分数' };
   const Tlo = Math.min(...trace.samples.map((s) => s.T), ...sch.map((s) => s.T));
   return (
     <>
-      <PageTitle title="平衡冷却 vs Scheil 凝固" desc="同一热力学模型、两种极限的物质传输假设：结果差异完全来自假设，而不是热力学。" />
+      <PageTitle title="平衡冷却 vs Scheil 凝固" desc={`同一热力学模型、两种极限的物质传输假设：结果差异完全来自假设，而不是热力学。${schBusy ? '（Scheil 计算中…）' : ''}`} />
       <div className="cols c2">
         <div className="stack">
           <Panel title="液相路径" prov="model">
@@ -191,16 +188,16 @@ function ScheilSection() {
               <TernaryPlot d={d} background="fields" onPick={(x) => setX0(x, false)}>
                 {(m) => (
                   <>
-                    <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke="#3a78b5" strokeWidth={3} />
-                    <polyline points={sch.map((s) => m.px(s.xL).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={1.8} strokeDasharray="5 3" />
+                    <polyline points={trace.liquidPath.map((p) => m.px(p.x).join(',')).join(' ')} fill="none" stroke={COLOR.phase.liquid} strokeWidth={3} />
+                    <polyline points={sch.map((s) => m.px(s.xL).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={1.8} strokeDasharray="5 3" />
                     <Handle m={m} x={x0} onDrag={(x) => setX0(x, false)} label="x₀" />
                   </>
                 )}
               </TernaryPlot>
             </div>
             <div className="legend-inline">
-              <span><i style={{ background: '#3a78b5' }} />平衡冷却</span>
-              <span><i style={{ background: '#c00000' }} />Scheil</span>
+              <span><i style={{ background: COLOR.phase.liquid }} />平衡冷却</span>
+              <span><i style={{ background: COLOR.stateX0 }} />Scheil</span>
             </div>
           </Panel>
           <Panel title="液相分数随温度" prov="model">
@@ -249,6 +246,7 @@ function ScheilSection() {
                 <tr><th>界面</th><td>—</td><td>局部平衡</td></tr>
                 <tr><th>转熔反应</th><td>按平衡进行</td><td>不发生（被包裹的先析出相不参与）</td></tr>
                 <tr><th>过冷 / 形核</th><td colSpan={2}>均不考虑</td></tr>
+                <tr><th>数值方法</th><td>—</td><td>与 pycalphad 生态 scheil 包（simulate_scheil_solidification）假设一致；自适应步长 0.25–10 K，相集合改变处二分定位事件温度，终凝按不变反应平台一次完成</td></tr>
               </tbody>
             </table>
             <div className="callout warn">
@@ -257,7 +255,7 @@ function ScheilSection() {
           </Panel>
           <Panel title="Scheil 的数学" prov="math">
             <p>每一温度步：把剩余液相当作新的总成分求平衡，x₀⁽ᵏ⁺¹⁾ = x_L⁽ᵏ⁾，f_L⁽ᵏ⁺¹⁾ = f_L⁽ᵏ⁾·f_L(局部)。守恒仍成立，但只对"液相 + 当步析出物"成立 —— 先前的固相被移出了方程。</p>
-            <Eq>f_L(k+1)·x_L(k+1) + Σ Δnₛ(k)·cₛ = f_L(k)·x_L(k)</Eq>
+            <TeXBlock>{String.raw`f_L^{(k+1)} x_L^{(k+1)} + \sum \Delta n_s^{(k)} c_s = f_L^{(k)} x_L^{(k)}`}</TeXBlock>
           </Panel>
         </div>
       </div>

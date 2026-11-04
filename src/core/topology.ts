@@ -10,6 +10,7 @@ import type {
   Reaction,
   ReactionType,
 } from './types';
+import { INVARIANT_TERM } from './terms';
 
 /**
  * 由热力学模型自动提取液相面拓扑：初晶区、单变线（含类型与降温方向）、不变点（含反应式）、
@@ -79,7 +80,7 @@ interface Seg {
   b: string;
 }
 
-export function extractTopology(th: Thermo, N = 150): Topology {
+export function extractTopology(th: Thermo, N = 150, opts?: { twoLevel?: boolean }): Topology {
   const ns = th.solids.length;
   const rowStart: number[] = [];
   let nv = 0;
@@ -90,20 +91,68 @@ export function extractTopology(th: Thermo, N = 150): Topology {
   const vid = (i: number, j: number) => rowStart[i] + j;
   const X: Comp[] = new Array(nv);
   const lab = new Int16Array(nv);
-  const Tl = new Float64Array(nv);
-  const vi = new Int16Array(nv);
-  const vj = new Int16Array(nv);
-  for (let i = 0; i <= N; i++) {
-    for (let j = 0; j <= N - i; j++) {
-      const v = vid(i, j);
-      const x: Comp = [i / N, j / N, (N - i - j) / N];
-      X[v] = x;
-      vi[v] = i;
-      vj[v] = j;
-      const L = th.liquidus(x);
-      lab[v] = L.si;
-      Tl[v] = L.T;
-    }
+  const Tl = new Float64Array(nv).fill(NaN);
+  for (let i = 0; i <= N; i++)
+    for (let j = 0; j <= N - i; j++) X[vid(i, j)] = [i / N, j / N, (N - i - j) / N];
+  const evalVertex = (i: number, j: number) => {
+    const v = vid(i, j);
+    if (!Number.isNaN(Tl[v])) return;
+    const L = th.liquidus(X[v]);
+    lab[v] = L.si;
+    Tl[v] = L.T;
+  };
+
+  /**
+   * 两级网格（含固溶体的体系，Tsat 昂贵）：先在粗网格（N/R）上求初晶相，只在初晶相发生变化的单元
+   * 及其邻域细化到精细网格；其余顶点继承最近粗顶点的初晶相。化学计量体系直接全网格取样。
+   */
+  const R = 3;
+  const twoLevel = (opts?.twoLevel ?? th.hasSolution) && N % R === 0 && N >= 60;
+  /** 需要做三角形扫描的精细单元（菱形 (ci,cj) 内的全部精细三角形）；单级网格时为 null */
+  let refine: Uint8Array | null = null;
+  const Nc = N / R;
+  if (!twoLevel) {
+    for (let i = 0; i <= N; i++) for (let j = 0; j <= N - i; j++) evalVertex(i, j);
+  } else {
+    const labC = new Int16Array((Nc + 1) * (Nc + 1)).fill(-1);
+    const cid = (i: number, j: number) => i * (Nc + 1) + j;
+    for (let i = 0; i <= Nc; i++)
+      for (let j = 0; j <= Nc - i; j++) labC[cid(i, j)] = th.liquidus([i / Nc, j / Nc, (Nc - i - j) / Nc]).si;
+    const mixed = new Uint8Array((Nc + 1) * (Nc + 1));
+    for (let i = 0; i < Nc; i++)
+      for (let j = 0; j < Nc - i; j++) {
+        const ls = [labC[cid(i, j)], labC[cid(i + 1, j)], labC[cid(i, j + 1)]];
+        if (i + j + 2 <= Nc) ls.push(labC[cid(i + 1, j + 1)]);
+        if (ls.some((l) => l !== ls[0])) mixed[cid(i, j)] = 1;
+      }
+    refine = new Uint8Array((Nc + 1) * (Nc + 1));
+    for (let i = 0; i < Nc; i++)
+      for (let j = 0; j < Nc - i; j++)
+        if (mixed[cid(i, j)])
+          for (let di = -1; di <= 1; di++)
+            for (let dj = -1; dj <= 1; dj++) {
+              const a = i + di;
+              const b = j + dj;
+              if (a >= 0 && b >= 0 && a + b < Nc) refine[cid(a, b)] = 1;
+            }
+    // 精细顶点：位于被细化单元内的求值，其余继承最近的粗顶点标签
+    for (let i = 0; i <= N; i++)
+      for (let j = 0; j <= N - i; j++) {
+        const v = vid(i, j);
+        let ci = Math.round(i / R);
+        let cj = Math.round(j / R);
+        if (ci + cj > Nc) {
+          if (ci >= cj) ci--;
+          else cj--;
+        }
+        lab[v] = labC[cid(ci, cj)];
+      }
+    for (let ci = 0; ci < Nc; ci++)
+      for (let cj = 0; cj < Nc - ci; cj++) {
+        if (!refine[cid(ci, cj)]) continue;
+        for (let i = ci * R; i <= (ci + 1) * R; i++)
+          for (let j = cj * R; j <= (cj + 1) * R; j++) if (i + j <= N) evalVertex(i, j);
+      }
   }
 
   // 初晶区统计
@@ -114,7 +163,7 @@ export function extractTopology(th: Thermo, N = 150): Topology {
     const s = lab[v];
     area[s]++;
     for (let k = 0; k < 3; k++) cen[s][k] += X[v][k];
-    if (Tl[v] > tmax[s]) tmax[s] = Tl[v];
+    if (Tl[v] > tmax[s]) tmax[s] = Tl[v]; // 未求值顶点为 NaN，比较为假
   }
   const fields: PrimaryField[] = [];
   for (let s = 0; s < ns; s++) {
@@ -133,16 +182,46 @@ export function extractTopology(th: Thermo, N = 150): Topology {
     const q = lab[v];
     const xu = X[u];
     const xv = X[v];
+    const at = (t: number): Comp => [xu[0] + (xv[0] - xu[0]) * t, xu[1] + (xv[1] - xu[1]) * t, xu[2] + (xv[2] - xu[2]) * t];
+    const g = (t: number) => {
+      const x = at(t);
+      return th.Tsat(p, x) - th.Tsat(q, x);
+    };
+    // Illinois 改进的试位法：每步一次函数求值，约 8–10 步达到机器精度（原为 48 步二分）
     let lo = 0;
     let hi = 1;
-    const at = (t: number): Comp => [xu[0] + (xv[0] - xu[0]) * t, xu[1] + (xv[1] - xu[1]) * t, xu[2] + (xv[2] - xu[2]) * t];
-    for (let it = 0; it < 48; it++) {
-      const mid = 0.5 * (lo + hi);
-      const x = at(mid);
-      if (th.Tsat(p, x) - th.Tsat(q, x) >= 0) lo = mid;
-      else hi = mid;
+    let glo = g(0);
+    let ghi = g(1);
+    let t = 0.5;
+    if (glo > 0 && ghi < 0) {
+      let side = 0;
+      for (let it = 0; it < 80; it++) {
+        t = (lo * ghi - hi * glo) / (ghi - glo);
+        if (!(t > lo && t < hi)) t = 0.5 * (lo + hi);
+        const gt = g(t);
+        if (Math.abs(gt) < 1e-11 || hi - lo < 1e-14) break;
+        if (gt > 0) {
+          lo = t;
+          glo = gt;
+          if (side === 1) ghi *= 0.5;
+          side = 1;
+        } else {
+          hi = t;
+          ghi = gt;
+          if (side === -1) glo *= 0.5;
+          side = -1;
+        }
+      }
+    } else {
+      // 端点符号异常（标签取样与精确值不一致）：回退二分
+      for (let it = 0; it < 48; it++) {
+        const mid = 0.5 * (lo + hi);
+        if (g(mid) >= 0) lo = mid;
+        else hi = mid;
+      }
+      t = 0.5 * (lo + hi);
     }
-    const x = at(0.5 * (lo + hi));
+    const x = at(t);
     r = { x, T: th.Tsat(p, x) };
     edgeCache.set(key, r);
     return r;
@@ -167,21 +246,20 @@ export function extractTopology(th: Thermo, N = 150): Topology {
   const newton3 = (p: number, q: number, r: number, x0: Comp): { x: Comp; T: number } | null => {
     let y1 = x0[1];
     let y2 = x0[2];
-    const F = (a: number, b: number) => {
-      const x: Comp = [1 - a - b, a, b];
-      const tp = th.Tsat(p, x);
-      return [tp - th.Tsat(q, x), tp - th.Tsat(r, x)];
-    };
     for (let it = 0; it < 40; it++) {
-      const f = F(y1, y2);
+      const x: Comp = [1 - y1 - y2, y1, y2];
+      const gp = th.gradTsat(p, x);
+      const gq = th.gradTsat(q, x);
+      const gr = th.gradTsat(r, x);
+      if (!gp || !gq || !gr) return null;
+      const tp = th.Tsat(p, x);
+      const f = [tp - th.Tsat(q, x), tp - th.Tsat(r, x)];
       if (Math.abs(f[0]) + Math.abs(f[1]) < 1e-9) break;
-      const h = 1e-7;
-      const f1 = F(y1 + h, y2);
-      const f2 = F(y1, y2 + h);
-      const j11 = (f1[0] - f[0]) / h;
-      const j21 = (f1[1] - f[1]) / h;
-      const j12 = (f2[0] - f[0]) / h;
-      const j22 = (f2[1] - f[1]) / h;
+      // F₁ = Tp − Tq，F₂ = Tp − Tr；x = [1−u−v, u, v]
+      const j11 = gp[1] - gp[0] - (gq[1] - gq[0]);
+      const j12 = gp[2] - gp[0] - (gq[2] - gq[0]);
+      const j21 = gp[1] - gp[0] - (gr[1] - gr[0]);
+      const j22 = gp[2] - gp[0] - (gr[2] - gr[0]);
       const det = j11 * j22 - j12 * j21;
       if (Math.abs(det) < 1e-12) return null;
       let d1 = (f[0] * j22 - f[1] * j12) / det;
@@ -196,9 +274,9 @@ export function extractTopology(th: Thermo, N = 150): Topology {
       if (y1 < 0 || y2 < 0 || y1 + y2 > 1) return null;
     }
     const x: Comp = [1 - y1 - y2, y1, y2];
-    const f = F(y1, y2);
-    if (Math.abs(f[0]) + Math.abs(f[1]) > 1e-6) return null;
-    return { x, T: th.Tsat(p, x) };
+    const tp = th.Tsat(p, x);
+    if (Math.abs(tp - th.Tsat(q, x)) + Math.abs(tp - th.Tsat(r, x)) > 1e-6) return null;
+    return { x, T: tp };
   };
 
   const handleTri = (a: number, b: number, c: number) => {
@@ -250,6 +328,7 @@ export function extractTopology(th: Thermo, N = 150): Topology {
 
   for (let i = 0; i < N; i++) {
     for (let j = 0; j < N - i; j++) {
+      if (refine && !refine[Math.floor(i / R) * (Nc + 1) + Math.floor(j / R)]) continue;
       handleTri(vid(i, j), vid(i + 1, j), vid(i, j + 1));
       if (i + j <= N - 2) handleTri(vid(i + 1, j), vid(i + 1, j + 1), vid(i, j + 1));
     }
@@ -314,7 +393,7 @@ export function extractTopology(th: Thermo, N = 150): Topology {
       solids: f.s,
       reaction: rx,
       solidX: conjugateSolids(th, f.x, f.s),
-      name: rx.type === 'eutectic' ? '三元共晶点（低共熔点）' : rx.type === 'transition' ? '过渡点（单转熔点）' : '三元包晶点（双转熔点）',
+      name: INVARIANT_TERM[rx.type === 'eutectic' ? 'eutectic' : rx.type === 'transition' ? 'transition' : 'peritectic'].name,
     });
   }
   // 二元点：折线端点位于边界

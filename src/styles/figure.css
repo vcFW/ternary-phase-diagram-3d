@@ -1,0 +1,808 @@
+/* 图窗、工具条、三元图 / XY 图 / 轴测图、工作台布局 */
+/* ============ 页面 1：工作台（沿用原三栏布局） ============ */
+.ws {
+  height: 100%;
+  display: grid;
+  grid-template-columns: clamp(262px, 20vw, 310px) minmax(0, 1fr) clamp(340px, 28vw, 430px);
+  grid-template-areas: 'left center right';
+  gap: 8px;
+  padding: 8px;
+}
+.ws.focus {
+  grid-template-columns: 0 minmax(0, 1fr) 0;
+  gap: 0;
+}
+.ws.focus .left,
+.ws.focus .right {
+  display: none;
+}
+@media (max-width: 1180px) {
+  .ws {
+    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-areas: 'left center';
+  }
+  .ws .right {
+    display: none;
+  }
+}
+.ws-focus {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 5;
+}
+.jump-row {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  gap: 6px !important;
+}
+
+/* ============ 三元图 / XY 图 / 轴测图 ============ */
+.tp {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.tp svg {
+  display: block;
+  user-select: none;
+  touch-action: none;
+}
+.tp-frame {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: var(--lw-boundary);
+}
+.tp-grid {
+  stroke: rgba(0, 0, 0, 0.13);
+  stroke-width: var(--lw-axis);
+}
+.tp-iso {
+  fill: none;
+  stroke: rgba(29, 34, 41, 0.35);
+  stroke-width: 0.6;
+}
+.tp-tick {
+  font-family: var(--axes-font);
+  font-size: var(--fs-xs);
+  fill: var(--dim);
+}
+.tp-axis-title text {
+  font-family: var(--axes-font);
+  fill: var(--dim);
+}
+/* 界线：白色光晕 + 按反应类型着色（共晶 / 过渡型转熔 / 包晶型转熔），与 core/colors 令牌一致 */
+.tp-bd-halo {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 4.4;
+  stroke-linejoin: round;
+}
+.tp-bd-halo.sel {
+  stroke-width: 6;
+}
+.tp-bd {
+  fill: none;
+  stroke: var(--c-ln-e);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+.tp-bd.transition {
+  stroke: var(--c-ln-u);
+}
+.tp-bd.peritectic {
+  stroke: var(--c-ln-p);
+}
+.tp-bd.sel {
+  stroke-width: 3.4;
+}
+.tp-arrow {
+  fill: var(--c-ln-e);
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 1;
+}
+.tp-arrow.transition {
+  fill: var(--c-ln-u);
+}
+.tp-arrow.peritectic {
+  fill: var(--c-ln-p);
+}
+.tp-max {
+  fill: var(--c-comp-3);
+  stroke: var(--text);
+  stroke-width: 1;
+}
+.tp-alk {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 1.3;
+  stroke-dasharray: 6 4;
+}
+.tp-vlab {
+  font-weight: 600;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+}
+.tp-ilab {
+  font-size: var(--fs-xs);
+  fill: var(--dim);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 2.5px;
+}
+.tp-flab {
+  font-weight: 600;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+}
+.tp-ivlab {
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+  fill: var(--c-pt-e);
+}
+.tp-ivlab.transition {
+  fill: var(--c-pt-u);
+}
+.tp-ivlab.peritectic {
+  fill: var(--c-pt-p);
+}
+.tp-slab {
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+}
+.tp-hlab {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+}
+.tp-inv {
+  stroke: var(--white);
+  stroke-width: 1.5;
+  fill: var(--c-pt-e);
+}
+.tp-inv.transition {
+  fill: var(--c-pt-u);
+}
+.tp-inv.peritectic {
+  fill: var(--c-pt-p);
+}
+.tp-solid {
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 2;
+}
+.f2-tp {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+.f2-tp svg {
+  position: absolute;
+  inset: 0;
+}
+.arrow line {
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+.arrow polygon {
+  fill: currentColor;
+}
+.arrow.vec {
+  color: var(--accent);
+}
+.arrow.grad {
+  color: var(--warn);
+}
+.arrow.tan {
+  color: var(--c-path);
+}
+.arrow.dim {
+  color: var(--dim2);
+}
+.arrow.thin line {
+  stroke-width: 1.2;
+}
+.lnk {
+  stroke: var(--text);
+  stroke-width: 1.2;
+  fill: none;
+}
+.lnk.dash {
+  stroke-dasharray: 5 3;
+}
+.lnk.hi {
+  stroke: var(--danger);
+  stroke-width: 2;
+}
+.tri-fill {
+  fill: rgba(0, 114, 189, 0.1);
+  stroke: var(--accent);
+  stroke-width: 1.3;
+}
+.tri-fill.bad {
+  fill: rgba(192, 0, 0, 0.07);
+  stroke: var(--danger);
+  stroke-dasharray: 5 3;
+}
+.pt-lab {
+  font-size: var(--fs-xs);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+}
+.plot-box {
+  height: 340px;
+  position: relative;
+}
+.plot-box.tall {
+  height: 420px;
+}
+.plot-box.short {
+  height: 280px;
+}
+.xy {
+  width: 100%;
+  position: relative;
+}
+.xy svg {
+  display: block;
+  user-select: none;
+  touch-action: none;
+}
+.xy-bg {
+  fill: var(--white);
+}
+.xy-frame {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 0.8;
+}
+.xy-grid {
+  stroke: rgba(0, 0, 0, 0.08);
+}
+.xy-tick {
+  font-size: var(--fs-xs);
+  fill: var(--dim);
+  font-family: var(--mono);
+}
+.xy-axl {
+  font-size: var(--fs-sm);
+  fill: var(--dim);
+}
+.xy-lab {
+  font-size: var(--fs-xs);
+  paint-order: stroke;
+  stroke: var(--white);
+  stroke-width: 3px;
+}
+.xy-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 2px 6px 0 54px;
+  font-size: var(--fs-sm);
+  color: var(--dim);
+}
+.xy-legend i {
+  display: inline-block;
+  width: 16px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.axo {
+  width: 100%;
+  position: relative;
+}
+.axo svg {
+  display: block;
+  user-select: none;
+}
+.axo-base {
+  fill: var(--blue-96-2);
+  stroke: var(--text);
+  stroke-width: 1;
+}
+.axo-top {
+  fill: none;
+  stroke: rgba(29, 34, 41, 0.35);
+  stroke-dasharray: 3 3;
+}
+.axo-edge {
+  stroke: rgba(29, 34, 41, 0.55);
+  stroke-width: 0.8;
+}
+.axo-tick {
+  font-size: var(--fs-xs);
+  fill: var(--dim);
+  font-family: var(--mono);
+}
+.axo-vlab {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+.axo-hint {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  font-size: var(--fs-xs);
+  color: var(--dim2);
+}
+
+/* ================== 相图工作台：MATLAB 式科学计算界面 ==================
+   约定（与其它模块共用 :root 令牌）：
+   · 图窗（figure）白底、灰色标题栏、1px 中灰边框，无圆角、无阴影、无渐变；
+   · 坐标轴文字用 Helvetica/Arial，数值等宽；颜色序列为 MATLAB 默认色序；
+   · 工具条（toolstrip）按功能分组，组名位于组底部；按钮扁平，选中态为浅蓝底 + 蓝框。 */
+
+
+.wsx {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--bg);
+}
+
+/* ---------- 工具条 ---------- */
+.tstrip {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: var(--tstrip-bg);
+  border-bottom: 1px solid var(--gray-78);
+  padding: 3px 4px 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
+  z-index: 20;
+}
+.tgroup {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--gray-84);
+  padding: 0 8px;
+  flex: none;
+}
+.tgroup-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+}
+.tgroup-label {
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--gray-42);
+  padding: 1px 0 3px;
+  letter-spacing: 0.05em;
+}
+.tbtns {
+  display: flex;
+  gap: 2px;
+  align-items: stretch;
+}
+.tbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 2px 8px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.tbtn b {
+  font-weight: 500;
+}
+.tbtn small {
+  font-size: var(--fs-xs);
+  color: var(--gray-42);
+}
+.tbtn:hover {
+  background: var(--tbtn-hover);
+  border-color: var(--blue-86);
+}
+.tbtn.on {
+  background: var(--tbtn-on);
+  border-color: var(--tbtn-on-border);
+}
+.tchecks {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 1px 10px;
+  font-size: var(--fs-sm);
+}
+.tchecks label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tchecks input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+.tdrop {
+  position: relative;
+}
+.tdrop-panel {
+  position: fixed;
+  margin-top: 4px;
+  width: 330px;
+  max-height: 70vh;
+  overflow-y: auto;
+  z-index: 80;
+  background: var(--white);
+  border: 1px solid var(--mfig-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+.tdrop-panel .card {
+  border: 0;
+}
+
+/* ---------- 图窗布局 ---------- */
+.wsx-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr) clamp(360px, 29vw, 470px);
+  grid-template-areas: 'f2 f3 in';
+  gap: 6px;
+  padding: 6px;
+}
+.fig2d {
+  grid-area: f2;
+}
+.fig3d {
+  grid-area: f3;
+}
+.insp-wrap {
+  grid-area: in;
+}
+.wsx.focus .wsx-body {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'f2 f3';
+}
+.wsx.focus .insp-wrap {
+  display: none;
+}
+@media (max-width: 1380px) {
+  .wsx-body {
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 36vw, 440px);
+    grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas: 'f2 in' 'f3 in';
+  }
+  .wsx.focus .wsx-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'f2' 'f3';
+  }
+}
+.mfig {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--white);
+  border: 1px solid var(--mfig-border);
+}
+.mfig-title {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 8px;
+  background: var(--mfig-title);
+  border-bottom: 1px solid var(--gray-81);
+  font-family: var(--axes-font);
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+.mfig-no {
+  font-weight: 700;
+  color: var(--accent2);
+}
+.mfig-tb {
+  width: 22px;
+  height: 20px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  color: var(--dim);
+  border-radius: 2px;
+}
+.mfig-tb:hover {
+  background: var(--tbtn-hover);
+  border-color: var(--blue-86);
+}
+.mfig-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.mfig-body.stage {
+  border: 0;
+  border-radius: 0;
+  background: var(--white);
+}
+.fig2d .view {
+  height: 100%;
+}
+
+/* ---------- 二维交互图 ---------- */
+.f2 {
+  position: absolute;
+  inset: 0;
+}
+.f2 canvas,
+.f2 .f2-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.f2-svg {
+  user-select: none;
+  touch-action: none;
+}
+.f2-lab {
+  font-family: var(--axes-font);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 3px;
+}
+.f2-small {
+  font-family: var(--axes-font);
+  font-size: var(--fs-xs);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 3px;
+}
+/* MATLAB 数据提示框 */
+.f2-tip {
+  fill: var(--yellow-94-2);
+  stroke: var(--text);
+  stroke-width: 0.8;
+}
+.f2-tiptxt {
+  font-family: var(--axes-font);
+  font-size: var(--fs-xs);
+  fill: var(--text);
+}
+.f2-tiptxt.dim {
+  fill: var(--gray-42);
+}
+
+/* ---------- 检查器 ---------- */
+.insp {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.insp-tabs {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--gray-81);
+  background: var(--gray-97);
+}
+.insp-tabs button {
+  border: 0;
+  border-right: 1px solid var(--gray-88);
+  background: transparent;
+  padding: 4px 9px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  color: var(--dim);
+}
+.insp-tabs button.on {
+  background: var(--white);
+  color: var(--accent2);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.insp-tabs button:hover:not(.on) {
+  background: var(--tbtn-hover);
+}
+.insp-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ins-sec h4 {
+  margin: 0 0 5px;
+  font-size: var(--fs-md);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--blue-90);
+  padding-bottom: 3px;
+}
+.ins-sec p {
+  margin: 4px 0;
+}
+.ins-big {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: var(--fs-md);
+  margin-bottom: 4px;
+}
+.kind {
+  font-size: var(--fs-xs);
+  padding: 0 7px;
+  line-height: 18px;
+  border-radius: 2px;
+  border: 1px solid;
+  font-weight: 600;
+}
+.kind.liquid,
+.kind.none {
+  color: var(--accent2);
+  border-color: var(--blue-75);
+  background: var(--blue-96);
+}
+.kind.coexist,
+.kind.primary,
+.kind.eutectic {
+  color: var(--green-27);
+  border-color: var(--green-71);
+  background: var(--green-95);
+}
+.kind.solid,
+.kind.solid {
+  color: var(--dim);
+  border-color: var(--gray-78);
+  background: var(--tstrip-bg);
+}
+.kind.peritectic,
+.kind.invariant {
+  color: var(--red-33);
+  border-color: var(--red-77);
+  background: var(--red-96);
+}
+.fbar {
+  display: inline-block;
+  width: 60px;
+  height: 6px;
+  background: var(--gray-91);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.fbar span {
+  display: block;
+  height: 100%;
+}
+
+/* ---------- 三维视图叠加控件：统一为 MATLAB 坐标轴工具栏 / 图例 ---------- */
+.wsx .vp-toolbar {
+  border-radius: 0;
+  border-color: var(--gray-78);
+  background: rgba(255, 255, 255, 0.95);
+}
+.wsx .vp-toolbar button {
+  font-family: var(--axes-font);
+  font-size: var(--fs-xs);
+  padding: 2px 7px;
+}
+.wsx .vp-toolbar button.on {
+  background: var(--tbtn-on);
+  color: var(--text);
+}
+.wsx .vp-legend {
+  border-radius: 0;
+  border: 0;
+  border-left: 1px solid var(--text);
+  font-family: var(--axes-font);
+  font-size: var(--fs-xs);
+  background: rgba(255, 255, 255, 0.96);
+}
+.wsx .vp-hint {
+  font-size: var(--fs-xs);
+  border-radius: 0;
+}
+.wsx .ws-focus {
+  display: none;
+}
+
+/* ---------- 冷却时间轴（全站唯一的冷却播放控件） ---------- */
+.ct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--gray-81);
+  background: var(--panel2);
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+.ct-btns {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.ct-track {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+  height: 28px;
+}
+.ct-track input[type='range'] {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  width: 100%;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) var(--p, 0%), var(--gray-81) var(--p, 0%));
+  outline: none;
+}
+.ct-track input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--white);
+  border: 1px solid var(--accent);
+  cursor: pointer;
+}
+.ct-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 16px;
+  height: 10px;
+}
+.ct-tick {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--white);
+  background: var(--accent);
+  cursor: pointer;
+}
+.ct-tick.plateau {
+  background: var(--warn);
+}
+.ct-tick.cur {
+  box-shadow: 0 0 0 2px var(--blue-82);
+}
+.ct-T {
+  flex: none;
+  min-width: 96px;
+  text-align: right;
+}
+.ct-ev {
+  flex: 0 1 220px;
+  min-width: 0;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

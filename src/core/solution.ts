@@ -34,6 +34,81 @@ export interface SolEq extends Equilibrium {
 
 const EPS_Y = 1e-12;
 
+export type LpStatus = 'optimal' | 'iteration_limit' | 'singular';
+const WARNING_TEXT: Record<LpStatus | 'refine_failed', string> = {
+  optimal: '',
+  iteration_limit: '线性规划达到迭代上限',
+  singular: '线性规划基矩阵奇异',
+  refine_failed: '牛顿精化未收敛，采用离散网格解',
+};
+
+/**
+ * 3 行（Σ fⱼ yⱼ = x₀，f ≥ 0）修正单纯形：min Σ fⱼ Gⱼ。
+ * 默认 Dantzig 规则（最负约化成本进基）；连续出现 > 20 个退化步（θ = 0，目标不下降）后切换到 Bland 规则
+ * （最小下标进基、比值平手时最小下标出基），理论上保证不循环。
+ */
+export function simplex3(
+  Y: ArrayLike<Comp>,
+  G: ArrayLike<number>,
+  x0: Comp,
+  basis0: number[],
+  maxIter = 500,
+): { basis: number[]; f: number[]; mu: Comp; status: LpStatus; iterations: number; usedBland: boolean } {
+  const nC = Y.length;
+  const basis = basis0.slice();
+  let f: number[] = [0, 0, 0];
+  let mu: Comp = [0, 0, 0];
+  let degenerate = 0;
+  let usedBland = false;
+  let status: LpStatus = 'iteration_limit';
+  let it = 0;
+  for (; it < maxIter; it++) {
+    const B = [0, 1, 2].map((r) => basis.map((j) => Y[j][r])); // 3×3，列 = 基相成分
+    const Bi = inv3(B);
+    if (!Bi) {
+      status = 'singular';
+      break;
+    }
+    f = mv(Bi, x0);
+    mu = mv(transpose3(Bi), basis.map((j) => G[j])) as Comp;
+    const bland = degenerate > 20;
+    if (bland) usedBland = true;
+    let enter = -1;
+    let rmin = -1e-9;
+    for (let j = 0; j < nC; j++) {
+      const c = Y[j];
+      const r = G[j] - (mu[0] * c[0] + mu[1] * c[1] + mu[2] * c[2]);
+      if (r < rmin) {
+        rmin = r;
+        enter = j;
+        if (bland) break; // Bland：第一个负约化成本
+      }
+    }
+    if (enter < 0 || basis.includes(enter)) {
+      status = 'optimal';
+      break;
+    }
+    const dcol = mv(Bi, Y[enter]);
+    let leave = -1;
+    let theta = Infinity;
+    for (let k = 0; k < 3; k++)
+      if (dcol[k] > 1e-12) {
+        const q = Math.max(0, f[k]) / dcol[k];
+        if (q < theta - 1e-15 || (bland && Math.abs(q - theta) <= 1e-15 && leave >= 0 && basis[k] < basis[leave])) {
+          theta = q;
+          leave = k;
+        }
+      }
+    if (leave < 0) {
+      status = 'singular';
+      break;
+    }
+    degenerate = theta <= 1e-14 ? degenerate + 1 : 0;
+    basis[leave] = enter;
+  }
+  return { basis, f, mu, status, iterations: it, usedBland };
+}
+
 export class SolutionEngine {
   readonly th: Thermo;
   readonly N: number;
@@ -65,13 +140,13 @@ export class SolutionEngine {
   }
 
   // ---------------------------------------------------------------- 全局：线性规划（单纯形，全定价）
-  private lp(x0: Comp, T: number, extra: Col[]): { phases: Ph[]; mu: Comp } {
+  private lp(x0: Comp, T: number, extra: Col[]): { phases: Ph[]; mu: Comp; status: LpStatus } {
     const cols = extra.length ? this.cols.concat(extra) : this.cols;
     const nC = cols.length;
     const Gc = new Float64Array(nC);
     for (let j = 0; j < nC; j++) Gc[j] = cols[j].H - T * cols[j].S;
     // 初始基：每个顶点处 G 最低的列（网格包含顶点附近的点）
-    const basis = [0, 1, 2].map((k) => {
+    const basis0 = [0, 1, 2].map((k) => {
       let best = -1;
       for (let j = 0; j < nC; j++) {
         if (cols[j].y[k] < 1 - 1e-6) continue;
@@ -79,40 +154,8 @@ export class SolutionEngine {
       }
       return best;
     });
-    if (basis.some((b) => b < 0)) throw new Error('网格缺少顶点列');
-    let f: number[] = [0, 0, 0];
-    let mu: Comp = [0, 0, 0];
-    for (let it = 0; it < 500; it++) {
-      const B = [0, 1, 2].map((r) => basis.map((j) => cols[j].y[r])); // 3×3，列 = 基相成分
-      const Bi = inv3(B);
-      if (!Bi) break;
-      f = mv(Bi, x0);
-      mu = mv(transpose3(Bi), basis.map((j) => Gc[j])) as Comp;
-      let enter = -1;
-      let rmin = -1e-9;
-      for (let j = 0; j < nC; j++) {
-        const c = cols[j].y;
-        const r = Gc[j] - (mu[0] * c[0] + mu[1] * c[1] + mu[2] * c[2]);
-        if (r < rmin) {
-          rmin = r;
-          enter = j;
-        }
-      }
-      if (enter < 0 || basis.includes(enter)) break;
-      const dcol = mv(Bi, cols[enter].y);
-      let leave = -1;
-      let theta = Infinity;
-      for (let k = 0; k < 3; k++)
-        if (dcol[k] > 1e-12) {
-          const q = Math.max(0, f[k]) / dcol[k];
-          if (q < theta - 1e-15) {
-            theta = q;
-            leave = k;
-          }
-        }
-      if (leave < 0) break;
-      basis[leave] = enter;
-    }
+    if (basis0.some((b) => b < 0)) throw new Error('网格缺少顶点列');
+    const { basis, f, mu, status } = simplex3(cols.map((c) => c.y), Gc, x0, basis0);
     // 聚类：同一连续相的相邻网格点合并为一个相（相距较远则视为溶解度间隙中的两个相）
     const raw = basis.map((j, k) => ({ col: cols[j], f: f[k] })).filter((p) => p.f > 1e-12);
     const phases: Ph[] = [];
@@ -125,7 +168,7 @@ export class SolutionEngine {
         near.f = w;
       } else phases.push({ si: p.col.si, y: p.col.y, f: p.f });
     }
-    return { phases, mu };
+    return { phases, mu, status };
   }
 
   // ---------------------------------------------------------------- 精化：KKT 牛顿法
@@ -278,16 +321,16 @@ export class SolutionEngine {
 
   private global(x0: Comp, T: number): SolEq {
     const extra: Col[] = [];
-    let last: { phases: Ph[]; mu: Comp } | null = null;
+    let last: { phases: Ph[]; mu: Comp; status: LpStatus } | null = null;
     for (let round = 0; round < 4; round++) {
       const lp = this.lp(x0, T, extra);
       last = lp;
       const r = this.refine(x0, T, lp.phases, lp.mu);
-      if (r) return this.mk(r.phases, r.mu, T);
+      if (r) return this.mk(r.phases, r.mu, T, lp.status);
       // 精化失败：加密候选列后重试
       for (const t of this.tpd(lp.mu, T)) if (this.th.isContinuous(t.si)) extra.push(this.mkCol(t.si, t.y));
     }
-    return this.mk(last!.phases, last!.mu, T);
+    return this.mk(last!.phases, last!.mu, T, last!.status === 'optimal' ? 'refine_failed' : last!.status);
   }
 
   /**
@@ -333,7 +376,7 @@ export class SolutionEngine {
     return null;
   }
 
-  private mk(phs: Ph[], mu: Comp, T: number): SolEq {
+  private mk(phs: Ph[], mu: Comp, T: number, status: LpStatus | 'refine_failed' = 'optimal'): SolEq {
     const th = this.th;
     const kept = phs.filter((p) => p.f > 1e-12);
     const s = kept.reduce((a, p) => a + p.f, 0);
@@ -341,7 +384,8 @@ export class SolutionEngine {
       .map((p) => ({ si: p.si, id: p.si < 0 ? 'L' : th.solids[p.si].id, frac: p.f / s, x: p.y }))
       .sort((a, b) => a.si - b.si);
     const G = phases.reduce((a, p) => a + p.frac * th.Gphase(p.si, p.x, T), 0);
-    return { phases, key: phases.map((p) => p.id).join('+'), dof: 4 - phases.length, G, mu };
+    const warning = status === 'optimal' ? undefined : WARNING_TEXT[status];
+    return warning ? { phases, key: phases.map((p) => p.id).join('+'), G, mu, warning } : { phases, key: phases.map((p) => p.id).join('+'), G, mu };
   }
 }
 

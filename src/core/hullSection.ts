@@ -3,6 +3,7 @@ import type { PhaseDiagram } from './diagram';
 import type { IsoArc, IsoRegion, IsoSection } from './isothermal';
 import type { Comp } from './types';
 import type { SolutionEngine } from './solution';
+import { traceTwoPhase, type TieTarget, type ZpfCurve } from './zpfTrace';
 
 /**
  * 含固溶体体系的等温截面 = 所有相自由能面的下凸包在成分三角形上的投影。
@@ -27,8 +28,9 @@ export const HULL_N = 64;
 
 const cache = new Map<string, IsoSection>();
 
-export function hullSection(d: PhaseDiagram, eng: SolutionEngine, T: number, N = HULL_N): IsoSection {
-  const key = `${d.uid}|${T.toFixed(3)}|${N}`;
+/** trace = false：不做连结线延拓，两相区一律用凸包近似（用作高分辨率参照与回退） */
+export function hullSection(d: PhaseDiagram, eng: SolutionEngine, T: number, N = HULL_N, trace = true): IsoSection {
+  const key = `${d.uid}|${T.toFixed(3)}|${N}|${trace ? 1 : 0}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const th = d.th;
@@ -71,7 +73,7 @@ export function hullSection(d: PhaseDiagram, eng: SolutionEngine, T: number, N =
   const ties: [Comp, Comp][] = [];
   const arcs: IsoArc[] = [];
   const threes: { sis: number[]; c: Comp[] }[] = [];
-  const tieCand: [Comp, Comp][] = [];
+  const twoFaces: { ids: [number, number, number]; sis: number[] }[] = [];
   for (const [a, b, c] of faces) {
     const P = [pts[a], pts[b], pts[c]];
     const sis = P.map((p) => p.si);
@@ -86,31 +88,13 @@ export function hullSection(d: PhaseDiagram, eng: SolutionEngine, T: number, N =
     } else if (uniq.length === 3) {
       threes.push({ sis, c: P.map((p) => p.c) });
     } else {
-      // 两相面：两个同相顶点之间的边位于该相单相区的边界上
-      regions.push({ key: keyOf(sis), kind: 'two', poly: P.map((p) => p.c), fine: true });
-      for (let k = 0; k < 3; k++) {
-        const p = P[k];
-        const q = P[(k + 1) % 3];
-        if (uniq.length === 1) continue;
-        if (p.si === q.si) arcs.push({ si: p.si, pts: [p.c, q.c], startNb: -1, endNb: -1 });
-        else tieCand.push([p.c, q.c]);
-      }
+      twoFaces.push({ ids: [a, b, c], sis });
     }
   }
-  // 连结线：同一端点只保留一条，按端点位置排序后均匀抽取约 40 条
-  const groups = new Map<string, [Comp, Comp][]>();
-  for (const t of tieCand) {
-    const [u, v] = toXY(t[0]);
-    const g = `${Math.round(u * 1e6)},${Math.round(v * 1e6)}`;
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g)!.push(t);
-  }
-  const uniq = Array.from(groups.values()).map((l) => l[0]);
-  const stride = Math.max(1, Math.floor(uniq.length / 40));
-  uniq.sort((p, q) => toXY(p[0])[0] - toXY(q[0])[0] || toXY(p[0])[1] - toXY(q[0])[1]);
-  for (let i = 0; i < uniq.length; i += stride) ties.push(uniq[i]);
+
   // 三相连结三角形：合并后精化
   const invariantPts: IsoSection['invariantPts'] = [];
+  const triangles: { sis: number[]; ys: Comp[] }[] = [];
   const merged = new Map<string, { sis: number[]; c: Comp[] }>();
   for (const t of threes) {
     const k = [...t.sis].sort((a, b) => a - b).join(',');
@@ -124,12 +108,140 @@ export function hullSection(d: PhaseDiagram, eng: SolutionEngine, T: number, N =
     if (!(ex.phases.length === 3 && ex.phases.map((p) => p.si).join() === order.map((o) => o.si).join())) return;
     const poly = ex.phases.map((p) => p.x);
     regions.push({ key: keyOf(order.map((o) => o.si)), kind: 'three', poly });
+    triangles.push({ sis: order.map((o) => o.si), ys: poly });
     if (order[0].si < 0) invariantPts.push({ x: poly[0], solids: [order[1].si, order[2].si] });
   });
-  const sec: IsoSection = { T, regions, arcs, ties, invariantPts };
+
+  // 两相区：按相对 + 连通性聚类，每个簇用连结线延拓得到精确相界；失败的簇回退为凸包近似
+  const tieCand: [Comp, Comp][] = [];
+  const emitApprox = (f: { ids: [number, number, number]; sis: number[] }) => {
+    const P = f.ids.map((i) => pts[i]);
+    const uniq = Array.from(new Set(f.sis));
+    regions.push({ key: keyOf(f.sis), kind: 'two', poly: P.map((p) => p.c), fine: true });
+    for (let k = 0; k < 3; k++) {
+      const p = P[k];
+      const q = P[(k + 1) % 3];
+      if (uniq.length === 1) continue;
+      if (p.si === q.si) arcs.push({ si: p.si, pts: [p.c, q.c], startNb: -1, endNb: -1, approx: true });
+      else tieCand.push([p.c, q.c]);
+    }
+  };
+  const byPair = new Map<string, typeof twoFaces>();
+  for (const f of twoFaces) {
+    const u = Array.from(new Set(f.sis)).sort((a, b) => a - b);
+    const k = u.join(',');
+    if (!byPair.has(k)) byPair.set(k, []);
+    byPair.get(k)!.push(f);
+  }
+  byPair.forEach((list, pairKey) => {
+    const u = pairKey.split(',').map(Number);
+    let p = u[0];
+    let q = u.length > 1 ? u[1] : u[0];
+    if (!th.isContinuous(p)) [p, q] = [q, p];
+    // 连通簇（共享凸包顶点）
+    const parent = list.map((_, i) => i);
+    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    const owner = new Map<number, number>();
+    list.forEach((f, i) =>
+      f.ids.forEach((v) => {
+        const o = owner.get(v);
+        if (o === undefined) owner.set(v, i);
+        else parent[find(i)] = find(o);
+      }),
+    );
+    const clusters = new Map<number, typeof list>();
+    list.forEach((f, i) => {
+      const r = find(i);
+      if (!clusters.has(r)) clusters.set(r, []);
+      clusters.get(r)!.push(f);
+    });
+    const targets: TieTarget[] = [];
+    for (const tri of triangles) {
+      const ip = tri.sis.indexOf(p);
+      const iq = tri.sis.indexOf(q);
+      if (ip >= 0 && iq >= 0 && ip !== iq) targets.push({ P: tri.ys[ip], Q: tri.ys[iq] });
+    }
+    const traced: ZpfCurve[] = [];
+    clusters.forEach((faces) => {
+      // 种子连结线：先取离簇中心最近的几个面；已被前面曲线覆盖的簇跳过
+      let cx = 0;
+      let cy = 0;
+      for (const f of faces) for (const v of f.ids) {
+        cx += pts[v].x / (3 * faces.length);
+        cy += pts[v].y / (3 * faces.length);
+      }
+      const ranked = [...faces].sort((a, b) => cdist(a, cx, cy) - cdist(b, cx, cy)).slice(0, 8);
+      // 种子连结线：取凸包两相面的重心，用精确求解器得到该点的两相平衡，其两相成分即种子
+      const seedOf = (f: (typeof faces)[number]): [Comp, Comp] | null => {
+        const vs = f.ids.map((i) => pts[i]);
+        const ctr: Comp = [0, 1, 2].map((i) => (vs[0].c[i] + vs[1].c[i] + vs[2].c[i]) / 3) as Comp;
+        const ex = eng.equilibrium(ctr, T);
+        if (ex.phases.length !== 2) return null;
+        const sorted = [ex.phases[0].si, ex.phases[1].si].sort((a, b) => a - b);
+        if (sorted[0] !== Math.min(p, q) || sorted[1] !== Math.max(p, q)) return null;
+        const a = ex.phases.find((ph) => ph.si === p);
+        const b = ex.phases.find((ph) => ph.si === q && ph !== a);
+        return a && b ? [a.x, b.x] : null;
+      };
+      let curve: ZpfCurve | null = null;
+      for (const f of ranked) {
+        const sd = seedOf(f);
+        if (!sd) continue;
+        if (traced.some((cv) => covers(cv, sd))) return; // 该簇已被已追踪的连结线族覆盖
+        curve = trace ? traceTwoPhase(th, p, q, T, sd[0], sd[1], targets) : null;
+        if (curve) break;
+      }
+      if (!curve) {
+        faces.forEach(emitApprox);
+        return;
+      }
+      traced.push(curve);
+      const cont = th.isContinuous(q);
+      regions.push({ key: keyOf([p, q]), kind: 'two', poly: cont ? [...curve.P, ...curve.Q.slice().reverse()] : [...curve.P, th.solids[q].n] });
+      arcs.push({ si: p, pts: curve.P, startNb: -1, endNb: -1 });
+      if (cont) arcs.push({ si: q, pts: curve.Q, startNb: -1, endNb: -1 });
+      const nT = Math.min(18, curve.P.length);
+      for (let k = 0; k < nT; k++) {
+        const i = Math.round(((k + 0.5) / nT) * (curve.P.length - 1));
+        ties.push([curve.P[i], curve.Q[i]]);
+      }
+    });
+  });
+  // 回退面的连结线：同一端点只保留一条，按端点位置排序后均匀抽取约 40 条
+  const groups = new Map<string, [Comp, Comp][]>();
+  for (const t of tieCand) {
+    const [u, v] = toXY(t[0]);
+    const g = `${Math.round(u * 1e6)},${Math.round(v * 1e6)}`;
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g)!.push(t);
+  }
+  const uniqTies = Array.from(groups.values()).map((l) => l[0]);
+  const stride = Math.max(1, Math.floor(uniqTies.length / 40));
+  uniqTies.sort((p, q) => toXY(p[0])[0] - toXY(q[0])[0] || toXY(p[0])[1] - toXY(q[0])[1]);
+  for (let i = 0; i < uniqTies.length; i += stride) ties.push(uniqTies[i]);
+  const sec: IsoSection = { T, regions, arcs, ties, invariantPts, stripW: 2.4 * h };
   if (cache.size > 60) cache.delete(cache.keys().next().value as string);
   cache.set(key, sec);
   return sec;
+
+  function cdist(f: { ids: [number, number, number] }, cx: number, cy: number) {
+    let sx = 0;
+    let sy = 0;
+    for (const v of f.ids) {
+      sx += pts[v].x / 3;
+      sy += pts[v].y / 3;
+    }
+    return Math.hypot(sx - cx, sy - cy);
+  }
+  /** 种子连结线的中点是否已落在某条已追踪的连结线族附近 */
+  function covers(cv: ZpfCurve, sd: [Comp, Comp]): boolean {
+    const mid = [0, 1, 2].map((i) => (sd[0][i] + sd[1][i]) / 2);
+    for (let k = 0; k < cv.P.length; k += 2) {
+      const m = [0, 1, 2].map((i) => (cv.P[k][i] + cv.Q[k][i]) / 2);
+      if (Math.hypot(m[0] - mid[0], m[1] - mid[1], m[2] - mid[2]) < 0.02) return true;
+    }
+    return false;
+  }
 }
 
 function dxy(a: HP, b: HP) {

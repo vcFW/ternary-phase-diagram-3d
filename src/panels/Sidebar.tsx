@@ -1,75 +1,8 @@
-import { cel, phaseColor, solidColor, toC, toK } from '../core/colors';
+import { phaseColor } from '../core/colors';
 import { getPreset } from '../core/presets';
 import { currentSpec, useStore } from '../state/store';
 import { Card, Chip, Segmented, SliderRow, Toggle } from '../ui/controls';
 import type { Comp } from '../core/types';
-
-export function Sidebar() {
-  return (
-    <div className="sidebar">
-      <SystemCard />
-      <StateCard />
-      <ExamplesCard />
-      <SectionCard />
-      <LayersCard />
-    </div>
-  );
-}
-
-export function SystemCard() {
-  const presetId = useStore((s) => s.presetId);
-  const d = useStore((s) => s.diagram);
-  const setSel = useStore((s) => s.setSel);
-  const preset = getPreset(presetId);
-  return (
-    <Card title={preset.short} sub="体系在顶部全局条中切换">
-      <p className="desc">{preset.description}</p>
-      <div className="chips">
-        {d.topo.compounds.map((c) => {
-          const s = d.solids[c.si];
-          return (
-            <Chip key={s.id} color={solidColor(s.index)} onClick={() => { setSel({ kind: 'compound', si: s.index }); useStore.getState().setTab('info'); }} title={c.text}>
-              {s.label}（{s.formula}）· {c.congruent ? '稳定·一致熔融' : '不稳定·不一致熔融'}
-            </Chip>
-          );
-        })}
-      </div>
-      <p className="note">数据声明：参数为示意值，不代表真实材料；拓扑由热力学模型自动推出。</p>
-    </Card>
-  );
-}
-
-export function StateCard() {
-  const d = useStore((s) => s.diagram);
-  const x0 = useStore((s) => s.x0);
-  const T = useStore((s) => s.T);
-  const setComp = useStore((s) => s.setComp);
-  const setT = useStore((s) => s.setT);
-  const range = d.tRange();
-  const sym = d.params.components.map((c) => c.symbol);
-  const Tl = d.liquidus(x0).T;
-  return (
-    <Card title="状态点：成分与温度" sub={`Σ = ${((x0[0] + x0[1] + x0[2]) * 100).toFixed(1)}%`}>
-      {([0, 1, 2] as const).map((i) => (
-        <SliderRow key={i} label={`x(${sym[i]})`} labelWidth={42} color={solidColor(i)} value={x0[i] * 100} min={0} max={100} step={0.5} unit="%" onChange={(v) => setComp(i, v / 100)} />
-      ))}
-      <div className="hr" />
-      <SliderRow label="T" labelWidth={42} value={toC(T)} min={Math.floor(toC(range.Tmin))} max={Math.ceil(toC(range.Tmax))} step={1} unit="°C" onChange={(v) => setT(toK(v))} />
-      <div className="chips">
-        <Chip onClick={() => setT(Tl + 0.3)} title="将温度设为该成分的液相线温度">液相线 {cel(Tl)}</Chip>
-        {d.topo.invariants
-          .filter((v) => v.rank === 'ternary')
-          .sort((a, b) => b.T - a.T)
-          .map((v) => (
-            <Chip key={v.id} onClick={() => setT(v.T + 0.3)} title={v.reaction.text}>
-              {v.label} {cel(v.T)}
-            </Chip>
-          ))}
-      </div>
-      <p className="note">三维中：拖动半透明等温面升降温度；拖动红色状态点改变成分。</p>
-    </Card>
-  );
-}
 
 export function ExamplesCard() {
   const presetId = useStore((s) => s.presetId);

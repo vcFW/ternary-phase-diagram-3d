@@ -6,8 +6,11 @@ import { fmtNum, gaussSteps } from '../../math/linalg';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
-import { Derivation, Eq, KV, M, MatrixView, Panel, Prov, type Step } from '../../viz/MathView';
-import { Chip, SliderRow, Toggle } from '../../ui/controls';
+import { Derivation, KV, MatrixView, Panel, Prov, type Step } from '../../viz/MathView';
+import { Chip, Toggle } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
+import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 interface Ph {
   id: string;
@@ -44,7 +47,7 @@ export function LeverSection() {
     setChosen((c) => (c.includes(id) ? c.filter((v) => v !== id) : c.length >= 4 ? c : [...c, id]));
   };
   const colLabels = phases.map((p) => p.id);
-  const colColors = phases.map((p) => (p.id === 'L' ? '#3a78b5' : p.color));
+  const colColors = phases.map((p) => (p.id === 'L' ? COLOR.phase.liquid : p.color));
   const elim = r && r.k >= 2 && r.k <= 3 ? gaussSteps(r.A.map((row, i) => [...row, r.b[i]]), ['x_A 行', 'x_B 行', 'Σ 行']) : null;
   const setF = (j: number, v: number) => {
     if (!r?.f || phases.length < 2) return;
@@ -60,13 +63,13 @@ export function LeverSection() {
     ? [
         { kind: 'known', body: <>相成分 {phases.map((p) => `${p.id} = (${p.x.map((v) => fmtNum(v, 3)).join(', ')})`).join('；')}；总成分 c₀ = ({x0.map((v) => fmtNum(v, 3)).join(', ')})，T = {cel(T, 1)}。</> },
         { kind: 'assume', body: <>封闭体系（总量守恒）；各相成分已由平衡计算给定 <Prov k="model" />；求相对数量 f。</> },
-        { kind: 'govern', body: <Eq>Σ fᵢ cᵢ = c₀ (3 行),　Σ fᵢ = 1,　fᵢ ≥ 0</Eq> },
+        { kind: 'govern', body: <TeXBlock>{String.raw`\sum_i f_i c_i = c_0,\quad \sum_i f_i = 1,\quad f_i \ge 0`}</TeXBlock> },
         {
           kind: 'op',
           title: '发现冗余',
           body: (
             <>
-              <MatrixView name="[A_full | b]" M={r.Afull.map((row, i) => [...row, r.bfull[i]])} rowLabels={[...sym.map((s) => `x_${s}`), 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, '#1d2229']} aug={r.k} hiCol={hi} onHoverCol={setHi} />
+              <MatrixView name="[A_full | b]" M={r.Afull.map((row, i) => [...row, r.bfull[i]])} rowLabels={[...sym.map((s) => `x_${s}`), 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, COLOR.ink]} aug={r.k} hiCol={hi} onHoverCol={setHi} />
               <span>
                 rank(A_full) = {r.rankFull} ≤ 3：三行守恒方程之和 = 归一化行（每列分量和为 1）。删去 x_{sym[2]} 行得约化系统。
               </span>
@@ -78,7 +81,7 @@ export function LeverSection() {
           title: '约化系统',
           body: (
             <>
-              <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={[`x_${sym[0]}`, `x_${sym[1]}`, 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, '#1d2229']} aug={r.k} hiCol={hi} onHoverCol={setHi} />
+              <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={[`x_${sym[0]}`, `x_${sym[1]}`, 'Σ']} colLabels={[...colLabels, 'c₀']} colColors={[...colColors, COLOR.ink]} aug={r.k} hiCol={hi} onHoverCol={setHi} />
               <span>
                 rank A = {r.rank}，奇异值 {r.singular.map((v) => fmtNum(v, 4)).join(', ')}
                 {r.det !== null && <>，det A = {fmtNum(r.det, 5)}</>}，κ(A) = {Number.isFinite(r.cond) ? fmtNum(r.cond, 3) : '∞'}
@@ -93,7 +96,7 @@ export function LeverSection() {
                 title: 'Cramer 法则 = 面积比',
                 body: (
                   <>
-                    <Eq>fᵢ = det Aᵢ / det A = S(c₀ 替换第 i 个顶点) / S(△)</Eq>
+                    <TeXBlock note="（S(c₀→i)：用 c₀ 替换第 i 个顶点后的三角形面积）">{String.raw`f_i = \frac{\det A_i}{\det A} = \frac{S(c_0 \to i)}{S(\triangle)}`}</TeXBlock>
                     <span className="mono">
                       det Aᵢ = ({r.cramer.map((v) => fmtNum(v, 5)).join(', ')})；面积比 = ({r.areas!.sub.map((s) => fmtNum(s / r.areas!.total, 5)).join(', ')})
                     </span>
@@ -156,14 +159,14 @@ export function LeverSection() {
                       {P.length === 2 && <line x1={P[0][0]} y1={P[0][1]} x2={P[1][0]} y2={P[1][1]} className={`lnk ${bad ? 'hi' : ''}`} strokeWidth={2} />}
                       {P.length === 4 && <polygon points={P.map((p) => p.join(',')).join(' ')} className="tri-fill" />}
                       {hi !== null && P.length === 3 && hi < 3 && (
-                        <polygon points={[c, P[(hi + 1) % 3], P[(hi + 2) % 3]].map((p) => p.join(',')).join(' ')} fill="rgba(237,177,32,0.45)" stroke="#d95319" />
+                        <polygon points={[c, P[(hi + 1) % 3], P[(hi + 2) % 3]].map((p) => p.join(',')).join(' ')} fill="rgba(237,177,32,0.45)" stroke={COLOR.component[0]} />
                       )}
                       {P.map((p, j) => (
                         <line key={`l${j}`} x1={c[0]} y1={c[1]} x2={p[0]} y2={p[1]} stroke={colColors[j]} strokeWidth={hi === j ? 2.4 : 1} strokeDasharray="3 2" />
                       ))}
                       {P.map((p, j) => (
                         <g key={j} onMouseEnter={() => setHi(j)} onMouseLeave={() => setHi(null)}>
-                          <circle cx={p[0]} cy={p[1]} r={hi === j ? 8 : 6} fill={colColors[j]} stroke="#1d2229" />
+                          <circle cx={p[0]} cy={p[1]} r={hi === j ? 8 : 6} fill={colColors[j]} stroke={COLOR.ink} />
                           <text x={p[0] + 9} y={p[1] - 7} className="pt-lab" fill={colColors[j]}>
                             {phases[j].id}
                             {r?.f ? ` f=${fmtNum(r.f[j], 3)}` : ''}
@@ -179,7 +182,7 @@ export function LeverSection() {
             <div className="sublabel">参与方程的相（点击切换，最多 4 个；关闭"跟随平衡相"即可自由组合做反例）</div>
             <div className="chips">
               {avail.map((a) => (
-                <Chip key={a.id} color={a.id === 'L' ? '#3a78b5' : a.color} active={chosen.includes(a.id)} onClick={() => toggle(a.id)}>
+                <Chip key={a.id} color={a.id === 'L' ? COLOR.phase.liquid : a.color} active={chosen.includes(a.id)} onClick={() => toggle(a.id)}>
                   {a.id === 'L' ? `液相 L（当前平衡液相）` : a.id}
                 </Chip>
               ))}
@@ -188,7 +191,7 @@ export function LeverSection() {
               <>
                 <div className="sublabel">拖动相分数 → c₀ = Σ fᵢcᵢ 随之更新（约束 Σf = 1、f ≥ 0）</div>
                 {phases.map((p, j) => (
-                  <SliderRow key={p.id} label={`f(${p.id})`} labelWidth={52} color={colColors[j]} value={Math.max(0, Math.min(1, r.f![j]))} min={0} max={1} step={0.005} digits={3} onChange={(v) => setF(j, v)} />
+                  <LocalParam key={p.id} label={`f(${p.id})`} labelWidth={52} color={colColors[j]} value={Math.max(0, Math.min(1, r.f![j]))} min={0} max={1} step={0.005} digits={3} onChange={(v) => setF(j, v)} />
                 ))}
                 <p className="note">注意：若改变后的 c₀ 离开了当前相区，平衡相组合会改变（关闭"跟随平衡相"可固定相组合）。</p>
               </>
@@ -206,7 +209,7 @@ export function LeverSection() {
                 ]}
               />
               <p>
-                κ 衡量成分测量误差被放大到相分数的倍数：<M>‖δf‖/‖f‖ ≤ κ(A)·‖δb‖/‖b‖</M>。连结三角形越扁（接近共线），κ 越大；
+                κ 衡量成分测量误差被放大到相分数的倍数：<TeX>{String.raw`\|\delta f\|/\|f\| \le \kappa(A)\,\|\delta b\|/\|b\|`}</TeX>。连结三角形越扁（接近共线），κ 越大；
                 三点共线时 det A = 0，κ = ∞，相分数不再唯一。
               </p>
               {r.k === 4 && <div className="callout">k = 4：零空间一维，基向量 ({r.nullBasis[0].map((v) => fmtNum(v, 3)).join(', ')}) 正是四相不变反应的系数方向（见"相图规则与定理 · 不变点与反应"）。</div>}

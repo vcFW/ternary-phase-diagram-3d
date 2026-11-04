@@ -104,10 +104,11 @@ export const PRESETS: Preset[] = [
     params: { components: comps(), omega: { AB: 0, AC: 0, BC: 0 }, compounds: [binaryD(-4000)], Cp: 30 },
     examples: [
       { name: 'D 成分点：一致熔融', x: [0.5, 0.5, 0], note: 'D 在自身成分点熔化（熔点极大），凝固为纯 D，无转熔。', final: 'D' },
+      { name: 'D–C 连线上（伪二元）', x: [0.3, 0.3, 0.4], note: '成分点在 D–C 连线上：终态为 C + D 两相。该连线是真正的伪二元截面，有效组元数 C = 2（相律 F = C − P + 1）。', final: 'C+D' },
       { name: 'A–D–C 副三角形内', x: [0.3, 0.2, 0.5], note: '终点为 E₁（A + C + D 共晶）。', final: 'A+C+D' },
       { name: 'D–B–C 副三角形内', x: [0.15, 0.5, 0.35], note: '终点为 E₂（B + C + D 共晶）。', final: 'B+C+D' },
     ],
-    x0: [0.3, 0.3, 0.4],
+    x0: [0.32, 0.3, 0.38],
     tunable: 0,
   },
   {
@@ -123,6 +124,33 @@ export const PRESETS: Preset[] = [
       { name: 'C 角附近', x: [0.1, 0.2, 0.7], note: '', final: 'A+B+C' },
     ],
     x0: [0.4, 0.3, 0.3],
+    tunable: -1,
+  },
+  {
+    id: 'ternary-peritectic',
+    name: '含三元包晶点 P 的体系（不一致熔融三元化合物 S）',
+    short: '三元包晶点 P（双转熔）',
+    description:
+      '三元化合物 S 的成分点落在 A 的初晶区边缘，加热时 S 分解。体系同时包含三类不变点：三元共晶点 E（L → B + C + S）、过渡点 U（L + A ⇌ B + S）和三元包晶点 P（L + A + C ⇌ S，双转熔点）。P 点的液相位于固相三角形 A–C–S 之外、顶点 S 的"背面"，因此两个固相 A、C 同时被回溶、S 析出。参数由随机搜索筛选固化，仅为教学示意。',
+    points: [
+      'P 点（双转熔点）：L + A + C → S，液相位于相容三角形 A–C–S 的外侧（反应系数有两个负号）。',
+      'U 点（过渡点）：L + A ⇌ B + S（一个负号）；E 点：L → B + C + S（全正）。三类不变点在同一体系中并存，可一键对照。',
+      '穿过 P 之后若液相仍有剩余，则 A 先被耗尽，液相离开转熔线继续沿共晶线到达 E。',
+      '本体系对参数很敏感（稳定度滑块已锁定）：P 与 U 的分类取决于 S 的成分与生成焓之间的微妙平衡。',
+    ],
+    params: {
+      components: comps(),
+      omega: { AB: 3330, AC: 3824, BC: -4288 },
+      compounds: [{ id: 'S', label: 'S', formula: 'S', n: [0.397, 0.14, 0.463], dHf: -1482, dSf: 0.49 }],
+      Cp: 30,
+    },
+    examples: [
+      { name: 'A 初晶 → A/C 共晶线 → P（终点在 P）', x: [0.5, 0.05, 0.45], note: '沿 A/C 共晶线降温到 P 点，L + A + C → S 恒温进行，液相先于 A、C 耗尽，终态 A + C + S。', final: 'A+C+S' },
+      { name: 'C 初晶 → P → 继续到 E（穿过 P）', x: [0.3, 0.15, 0.55], note: 'P 点反应中 A 被耗尽，液相离开 P 继续沿共晶线降温，最终在 E 点 L → B + C + S。', final: 'B+C+S' },
+      { name: 'A 初晶 → 转熔线 → U（过渡点）', x: [0.4, 0.35, 0.25], note: '转熔线上 A 被回溶、S 析出；到 U 点 L + A → B + S，液相耗尽，终态 A + B + S。', final: 'A+B+S' },
+      { name: 'S 初晶 → E', x: [0.2, 0.35, 0.45], note: '成分点在 S 的初晶区，不经过转熔反应，直接沿共晶线到达 E。', final: 'B+C+S' },
+    ],
+    x0: [0.5, 0.05, 0.45],
     tunable: -1,
   },
   {

@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { useSize } from '../ui/useSize';
+import { COLOR } from '../ui/tokens';
 
 /** 轻量科学绘图（SVG）：坐标轴、刻度、网格、多条曲线、标记线与点。 */
 export interface Series {
@@ -113,21 +114,21 @@ export function XYPlot({ series, xlim, ylim, xlabel, ylabel, xfmt, yfmt, vlines,
           </g>
         ))}
         <g clipPath={`url(#${clipId})`}>
-          {hlines?.map((l, k) => <line key={`h${k}`} x1={m.l} x2={m.l + pw} y1={Y(l.y)} y2={Y(l.y)} stroke={l.color ?? '#7b8490'} strokeDasharray={l.dash ?? '4 3'} strokeWidth={1} />)}
-          {vlines?.map((l, k) => <line key={`v${k}`} x1={X(l.x)} x2={X(l.x)} y1={m.t} y2={m.t + ph} stroke={l.color ?? '#7b8490'} strokeDasharray={l.dash ?? '4 3'} strokeWidth={1} />)}
+          {hlines?.map((l, k) => <line key={`h${k}`} x1={m.l} x2={m.l + pw} y1={Y(l.y)} y2={Y(l.y)} stroke={l.color ?? COLOR.muted} strokeDasharray={l.dash ?? '4 3'} strokeWidth={1} />)}
+          {vlines?.map((l, k) => <line key={`v${k}`} x1={X(l.x)} x2={X(l.x)} y1={m.t} y2={m.t + ph} stroke={l.color ?? COLOR.muted} strokeDasharray={l.dash ?? '4 3'} strokeWidth={1} />)}
           {series.map((s) => (
             <polyline key={s.id} points={s.pts.filter((p) => Number.isFinite(p[1])).map((p) => `${X(p[0])},${Y(p[1])}`).join(' ')} fill="none" stroke={s.color} strokeWidth={s.width ?? 1.6} strokeDasharray={s.dash} strokeLinejoin="round" />
           ))}
           {points?.map((p, k) => (
             <g key={`p${k}`}>
-              <circle cx={X(p.x)} cy={Y(p.y)} r={p.r ?? 3.5} fill="#fff" stroke={p.color ?? '#c00000'} strokeWidth={1.6} />
-              {p.label && <text x={X(p.x) + 6} y={Y(p.y) - 6} className="xy-lab" fill={p.color ?? '#c00000'}>{p.label}</text>}
+              <circle cx={X(p.x)} cy={Y(p.y)} r={p.r ?? 3.5} fill={COLOR.white} stroke={p.color ?? COLOR.stateX0} strokeWidth={1.6} />
+              {p.label && <text x={X(p.x) + 6} y={Y(p.y) - 6} className="xy-lab" fill={p.color ?? COLOR.stateX0}>{p.label}</text>}
             </g>
           ))}
           {children?.(map)}
         </g>
-        {vlines?.filter((l) => l.label).map((l, k) => <text key={`vl${k}`} x={X(l.x) + 3} y={m.t + 11} className="xy-lab" fill={l.color ?? '#4b5563'}>{l.label}</text>)}
-        {hlines?.filter((l) => l.label).map((l, k) => <text key={`hl${k}`} x={m.l + pw - 3} y={Y(l.y) - 4} className="xy-lab" textAnchor="end" fill={l.color ?? '#4b5563'}>{l.label}</text>)}
+        {vlines?.filter((l) => l.label).map((l, k) => <text key={`vl${k}`} x={X(l.x) + 3} y={m.t + 11} className="xy-lab" fill={l.color ?? COLOR.dim}>{l.label}</text>)}
+        {hlines?.filter((l) => l.label).map((l, k) => <text key={`hl${k}`} x={m.l + pw - 3} y={Y(l.y) - 4} className="xy-lab" textAnchor="end" fill={l.color ?? COLOR.dim}>{l.label}</text>)}
         <rect x={m.l} y={m.t} width={pw} height={ph} className="xy-frame" />
         {xlabel && <text x={m.l + pw / 2} y={height - 4} className="xy-axl" textAnchor="middle">{xlabel}</text>}
         {ylabel && <text transform={`translate(12 ${m.t + ph / 2}) rotate(-90)`} className="xy-axl" textAnchor="middle">{ylabel}</text>}

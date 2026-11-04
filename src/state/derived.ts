@@ -5,6 +5,7 @@ import { gibbsDuhemOfEq } from '../math/curves';
 import { minimizeGibbs, type GMinResult } from '../math/gibbsMin';
 import { phaseFractions } from '../math/lever';
 import { analyzeReaction, reactionThermo, type RxAnalysis, type RxPhase, type RxThermo } from '../math/reaction';
+import { analyzePoint, type PointAnalysis } from '../math/pointAnalysis';
 import { scheil, type ScheilStep } from '../math/scheil';
 import { useStore } from './store';
 
@@ -37,7 +38,7 @@ export function gibbsMinAt(d: PhaseDiagram, x0: Comp, T: number): GMinResult {
 }
 
 export function scheilOf(d: PhaseDiagram, x0: Comp): ScheilStep[] {
-  return memo('scheil', `${d.uid}|${kx(x0)}`, () => scheil(d, x0, { dT: 0.5 }));
+  return memo('scheil', `${d.uid}|${kx(x0)}`, () => scheil(d, x0));
 }
 
 export interface InvariantAnalysis {
@@ -62,6 +63,28 @@ export function eqAnalysis(d: PhaseDiagram, x0: Comp, T: number, eq: Equilibrium
     lever: phaseFractions(eq.phases.map((p) => p.x), x0),
     gd: gibbsDuhemOfEq(d.th, eq.phases, T),
   }));
+}
+
+/** 同步派生：按键缓存的 useMemo（缓存键 = 相图 uid + 调用方给出的键） */
+export function useDerived<T>(d: PhaseDiagram, key: string, fn: () => T): T {
+  return useMemo(() => memo('derived', `${d.uid}|${key}`, fn), [d, key]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** 当前全局物理状态的完整点分析（几何 / 稳定性 / 反应 / 数学），各分析页共用 */
+export function usePointAnalysis(): PointAnalysis | null {
+  const d = useStore((s) => s.diagram);
+  const x0 = useStore((s) => s.x0);
+  const T = useStore((s) => s.T);
+  const eq = useStore((s) => s.eq);
+  const trace = useStore((s) => s.trace);
+  return useMemo(() => {
+    try {
+      return analyzePoint(d, x0, T, eq, trace);
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  }, [d, x0, T, eq, trace]);
 }
 
 /** 当前全局物理状态的分析（React 钩子） */

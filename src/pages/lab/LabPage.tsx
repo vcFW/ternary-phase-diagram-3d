@@ -13,10 +13,12 @@ import { AnalysisLayout, PageTitle, useSection, type Section } from '../../viz/P
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
 import { KV, MatrixView, Panel, Prov } from '../../viz/MathView';
-import { NumField, Segmented, SliderRow } from '../../ui/controls';
+import { NumField, Segmented } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
+import { COLOR } from '../../ui/tokens';
 
 const SECTIONS: Section[] = [
-  { id: 'validation', title: '验证算例（10 组）', sub: '解析 / 独立数值 / 文献参照' },
+  { id: 'validation', title: '验证算例（11 组）', sub: '解析 / 独立数值 / 文献参照' },
   { id: 'matrix', title: '矩阵实验室', sub: '自定义相点：分数、反应、消元' },
   { id: 'degenerate', title: '退化与病态', sub: '条件数、行列式、误差放大' },
   { id: 'params', title: '参数与示例体系', sub: '可编辑的热力学参数' },
@@ -222,7 +224,7 @@ function MatrixLab() {
         </div>
         <div className="stack">
           <Panel title="相分数系统 A f = b" prov="math">
-            <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={['x_A', 'x_B', 'Σ']} colLabels={[...names, 'c₀']} colColors={[...p.map((_, i) => solidColor(i)), '#1d2229']} aug={p.length} digits={5} />
+            <MatrixView name="[A | b]" M={r.A.map((row, i) => [...row, r.b[i]])} rowLabels={['x_A', 'x_B', 'Σ']} colLabels={[...names, 'c₀']} colColors={[...p.map((_, i) => solidColor(i)), COLOR.ink]} aug={p.length} digits={5} />
             <KV
               rows={[
                 ['rank A / 相数', <span className="mono">{r.rank} / {p.length}</span>],
@@ -296,16 +298,16 @@ function DegenerateLab() {
       <PageTitle title="退化与病态配置" desc="奇异与病态不是数值噪声，而是几何退化：三角形变扁、直线趋于平行。" />
       <div className="cols c2">
         <Panel title="扁三角形：第三个相点逼近 φ1φ2 连线" prov="math">
-          <SliderRow label="log₁₀ ε" labelWidth={64} value={le} min={-6} max={0} step={0.05} digits={2} onChange={setLe} />
+          <LocalParam label="log₁₀ ε" labelWidth={64} value={le} min={-6} max={0} step={0.05} digits={2} onChange={setLe} />
           <XYPlot
             height={240}
             series={[
-              { id: 'k', pts: curve.map((q) => [q.e, q.k] as [number, number]), color: '#c00000', label: 'log₁₀ κ(A)' },
-              { id: 'd', pts: curve.map((q) => [q.e, q.det] as [number, number]), color: '#0072bd', label: 'log₁₀ |det A|' },
-              { id: 'a', pts: curve.map((q) => [q.e, q.amp] as [number, number]), color: '#77ac30', dash: '4 3', label: 'log₁₀ 实测相对误差放大' },
+              { id: 'k', pts: curve.map((q) => [q.e, q.k] as [number, number]), color: COLOR.stateX0, label: 'log₁₀ κ(A)' },
+              { id: 'd', pts: curve.map((q) => [q.e, q.det] as [number, number]), color: COLOR.accent, label: 'log₁₀ |det A|' },
+              { id: 'a', pts: curve.map((q) => [q.e, q.amp] as [number, number]), color: COLOR.component[2], dash: '4 3', label: 'log₁₀ 实测相对误差放大' },
             ]}
             xlabel="log₁₀ ε（第三点到连线的距离尺度）"
-            vlines={[{ x: le, color: '#7b8490' }]}
+            vlines={[{ x: le, color: COLOR.muted }]}
           />
           <KV
             rows={[
@@ -322,7 +324,7 @@ function DegenerateLab() {
           </p>
         </Panel>
         <Panel title="切线与连线趋于平行" prov="math">
-          <SliderRow label="切线倾角" labelWidth={64} value={ang} min={0} max={90} step={0.1} digits={1} unit="°" onChange={setAng} />
+          <LocalParam label="切线倾角" labelWidth={64} value={ang} min={0} max={90} step={0.1} digits={1} unit="°" onChange={setAng} />
           <MatrixView name="[t | −(b−a)]" M={ti.M} digits={6} />
           <KV
             rows={[

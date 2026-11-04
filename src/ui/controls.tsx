@@ -112,3 +112,37 @@ export function Chip({ color, children, onClick, active, title }: { color?: stri
     </button>
   );
 }
+
+/** 点击展开的下拉面板（工具条 / 图窗工具条通用）；点击面板外关闭 */
+export function Drop({ label, children, className = 'tbtn', panelClass = 'tdrop-panel', title }: { label: ReactNode; children: ReactNode; className?: string; panelClass?: string; title?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('pointerdown', h);
+    return () => window.removeEventListener('pointerdown', h);
+  }, [open]);
+  return (
+    <div className="tdrop" ref={ref}>
+      <button className={`${className} ${open ? 'on' : ''}`} onClick={() => setOpen(!open)} title={title} aria-label={title} aria-expanded={open}>
+        {typeof label === 'string' ? <b>{label} ▾</b> : label}
+      </button>
+      {open && <div className={panelClass}>{children}</div>}
+    </div>
+  );
+}
+
+/** 标题条上的“?”：悬停 / 聚焦时显示说明（取代常驻的操作提示条） */
+export function HelpTip({ children }: { children: ReactNode }) {
+  return (
+    <span className="helptip" tabIndex={0} aria-label="操作说明">
+      ?
+      <span className="helptip-body" role="tooltip">
+        {children}
+      </span>
+    </span>
+  );
+}

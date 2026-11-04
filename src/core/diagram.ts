@@ -16,6 +16,15 @@ type Tri = [number, number, number];
  */
 let uidCounter = 0;
 
+/** 可在 Worker 中预先算好、传给主线程的数据 */
+export interface Precomputed {
+  topo?: Topology;
+  liqGrid?: Float32Array;
+}
+
+/** 三维液相面网格的分辨率（每边剖分数） */
+export const LIQ_GRID_N = 120;
+
 export class PhaseDiagram {
   readonly uid = ++uidCounter;
   readonly th: Thermo;
@@ -29,12 +38,14 @@ export class PhaseDiagram {
   private uniCache = new Map<string, Comp[]>();
   private uniCacheT = NaN;
 
-  constructor(params: SystemParams, gridN = 150) {
+  /** pre：已在别处（计算 Worker）算好的拓扑与液相面网格；给出则跳过相应计算 */
+  constructor(params: SystemParams, gridN = 150, pre?: Precomputed) {
     this.params = params;
     this.th = new Thermo(params);
     this.solids = this.th.solids;
     this.sol = this.th.hasSolution ? new SolutionEngine(this.th) : null;
-    this.topo = extractTopology(this.th, this.sol ? Math.min(gridN, 110) : gridN);
+    this.liqGridPre = pre?.liqGrid ?? null;
+    this.topo = pre?.topo ?? extractTopology(this.th, this.sol ? Math.min(gridN, 120) : gridN);
     const ns = this.solids.length;
     for (let a = 0; a < ns; a++)
       for (let b = a + 1; b < ns; b++)
@@ -63,6 +74,62 @@ export class PhaseDiagram {
           (dec ? `加热至 ${cel(dec.T)} 时按 ${dec.reaction.text.split('⇌').reverse().map((t) => t.trim()).join(' ⇌ ')} 分解。` : '');
       }
     }
+  }
+
+  private liqGridPre: Float32Array | null = null;
+
+  /**
+   * 液相面网格：顶点按 i 行（含 N−i+1 个）排列，每顶点 8 个槽 = 各固相饱和温度 Tsat（不足 8 个补 0）。
+   * 固溶体体系的 Tsat 代价很高（argmax 迭代），故在 Worker 中预先算好；否则惰性计算。
+   */
+  liquidusGrid(): Float32Array {
+    if (this.liqGridPre) return this.liqGridPre;
+    const N = LIQ_GRID_N;
+    const nv = ((N + 1) * (N + 2)) / 2;
+    const out = new Float32Array(nv * 8);
+    let v = 0;
+    for (let i = 0; i <= N; i++)
+      for (let j = 0; j <= N - i; j++, v++) {
+        const x: Comp = [i / N, j / N, (N - i - j) / N];
+        for (let s = 0; s < Math.min(8, this.ns); s++) out[v * 8 + s] = this.th.Tsat(s, x);
+      }
+    return (this.liqGridPre = out);
+  }
+
+  /**
+   * 液相线温度与初晶相的网格插值近似（仅用于绘图：逐像素取样的底图、标注定位等）。
+   * 在液相面网格上对各固相的 Tsat 做三角形线性插值再取最大，保留相区交界处的折角。
+   */
+  liquidusFast(x: Comp): { T: number; si: number } {
+    const N = LIQ_GRID_N;
+    const g = this.liquidusGrid();
+    const ns = Math.min(8, this.ns);
+    const fx = x[0] * N;
+    const fy = x[1] * N;
+    const i = Math.max(0, Math.min(N - 1, Math.floor(fx)));
+    const j = Math.max(0, Math.min(N - 1 - i, Math.floor(fy)));
+    const u = fx - i;
+    const v = fy - j;
+    const row = (a: number) => a * (N + 1) - (a * (a - 1)) / 2;
+    const at = (a: number, b: number) => (row(a) + b) * 8;
+    let v0: number, v1: number, v2: number, w0: number, w1: number, w2: number;
+    if (u + v <= 1) {
+      v0 = at(i, j); v1 = at(i + 1, j); v2 = at(i, j + 1);
+      w0 = 1 - u - v; w1 = u; w2 = v;
+    } else {
+      v0 = at(i + 1, j); v1 = at(i, j + 1); v2 = at(i + 1, j + 1);
+      w0 = 1 - v; w1 = 1 - u; w2 = u + v - 1;
+    }
+    let best = -1;
+    let T = -Infinity;
+    for (let s = 0; s < ns; s++) {
+      const t = w0 * g[v0 + s] + w1 * g[v1 + s] + w2 * g[v2 + s];
+      if (t > T) {
+        T = t;
+        best = s;
+      }
+    }
+    return { T, si: best };
   }
 
   get ns(): number {
@@ -114,35 +181,44 @@ export class PhaseDiagram {
     return out;
   }
 
+  /** refineUni 的统计：调用次数、总迭代数、回退到初值的次数（测试用） */
+  readonly refineStats = { calls: 0, iters: 0, fallbacks: 0 };
+
+  /** 单变线点：解 T_a(x) = T_b(x) = T（解析 Jacobian 的牛顿法，二次收敛） */
   private refineUni(a: number, b: number, x0: Comp, T: number): Comp {
+    const st = this.refineStats;
+    st.calls++;
     let y1 = x0[1];
     let y2 = x0[2];
     const th = this.th;
-    const F = (u: number, v: number) => {
-      const x: Comp = [1 - u - v, u, v];
-      return [th.Tsat(a, x) - T, th.Tsat(b, x) - T];
-    };
-    for (let it = 0; it < 12; it++) {
-      const f = F(y1, y2);
-      if (Math.abs(f[0]) + Math.abs(f[1]) < 1e-9) break;
-      const h = 1e-7;
-      const f1 = F(y1 + h, y2);
-      const f2 = F(y1, y2 + h);
-      const j11 = (f1[0] - f[0]) / h;
-      const j21 = (f1[1] - f[1]) / h;
-      const j12 = (f2[0] - f[0]) / h;
-      const j22 = (f2[1] - f[1]) / h;
+    for (let it = 0; it < 20; it++) {
+      const x: Comp = [1 - y1 - y2, y1, y2];
+      const ga = th.gradTsat(a, x);
+      const gb = th.gradTsat(b, x);
+      if (!ga || !gb) break;
+      const f0 = th.Tsat(a, x) - T;
+      const f1 = th.Tsat(b, x) - T;
+      if (Math.abs(f0) + Math.abs(f1) < 1e-9) {
+        st.iters += it;
+        return x;
+      }
+      // x = [1−u−v, u, v]：∂/∂u = g₁ − g₀，∂/∂v = g₂ − g₀
+      const j11 = ga[1] - ga[0];
+      const j12 = ga[2] - ga[0];
+      const j21 = gb[1] - gb[0];
+      const j22 = gb[2] - gb[0];
       const det = j11 * j22 - j12 * j21;
-      if (Math.abs(det) < 1e-12) return x0;
-      const d1 = (f[0] * j22 - f[1] * j12) / det;
-      const d2 = (j11 * f[1] - j21 * f[0]) / det;
+      if (Math.abs(det) < 1e-12) break;
+      const d1 = (f0 * j22 - f1 * j12) / det;
+      const d2 = (j11 * f1 - j21 * f0) / det;
       const ny1 = y1 - d1;
       const ny2 = y2 - d2;
-      if (ny1 < 0 || ny2 < 0 || ny1 + ny2 > 1 || Math.abs(d1) + Math.abs(d2) > 0.1) return x0;
+      if (ny1 < 0 || ny2 < 0 || ny1 + ny2 > 1 || Math.abs(d1) + Math.abs(d2) > 0.1) break;
       y1 = ny1;
       y2 = ny2;
     }
-    return [1 - y1 - y2, y1, y2];
+    st.fallbacks++;
+    return x0;
   }
 
   /** 液相 + 单固相：沿固相→x0 的射线求饱和液相，返回液相成分，失败返回 null */
@@ -176,7 +252,7 @@ export class PhaseDiagram {
       const sum = phases.reduce((s, p) => s + p.frac, 0);
       phases.forEach((p) => (p.frac /= sum));
       phases.sort((p, q) => p.si - q.si);
-      return { phases, key: phases.map((p) => p.id).join('+'), dof: 4 - phases.length, G };
+      return { phases, key: phases.map((p) => p.id).join('+'), G };
     };
     if (T >= liq) return mk([{ si: -1, id: 'L', frac: 1, x: x0 }], th.Gliq(x0, T));
 

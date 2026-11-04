@@ -5,16 +5,22 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { SQRT3_2, toXY } from '../core/barycentric';
-import { drawIso, drawVertical, THEME_LIGHT, triLayout } from '../core/canvasDraw';
+import { THEME_LIGHT, triLayout } from '../core/canvasDraw';
+import { drawIsoTexture } from '../core/isoTexture';
+import { drawVertical } from '../core/verticalDraw';
 import { colormap } from '../core/colormap';
 import { cel, hexToRgb, phaseColor, regionRgb, SOLID_COLORS, solidColor, toC } from '../core/colors';
-import type { PhaseDiagram } from '../core/diagram';
-import { isothermal } from '../core/isothermal';
-import { computeIso, computeVertical, nearestOnPerimeter, perimeterLine, resolveSection, type SectionConfig } from '../core/sections';
+import { LIQ_GRID_N, type PhaseDiagram } from '../core/diagram';
+import { nearestOnPerimeter, perimeterLine, resolveSection, type SectionConfig } from '../core/sections';
 import type { Trace } from '../core/cooling';
 import type { Comp, Equilibrium } from '../core/types';
 import { lerpComp, type VerticalSpec } from '../core/vertical';
 import type { Layers, Selection } from '../state/store';
+import { COLOR, hexNum, SCENE } from '../ui/tokens';
+import { useWorkerFor } from '../compute/client';
+import { isoOf, regionSlicesOf, verticalOf } from '../state/asyncCompute';
+import type { IsoSection } from '../core/isothermal';
+import type { VerticalRaster } from '../core/vertical';
 
 /** 世界坐标：成分三角形位于 XZ 平面（A 左前、B 右前、C 后），温度映射到 Y。 */
 const HEIGHT0 = 1.12;
@@ -176,11 +182,12 @@ export class PhaseScene {
   private isoMesh: THREE.Mesh | null = null;
   private isoTex: THREE.CanvasTexture | null = null;
   private isoCanvas = document.createElement('canvas');
-  private isoKey = '';
+  private isoSec: IsoSection | null = null;
   private vMesh: THREE.Mesh | null = null;
   private vTex: THREE.CanvasTexture | null = null;
   private vCanvas = document.createElement('canvas');
   private vKey = '';
+  private vRas: VerticalRaster | null = null;
   private vTimer = 0;
   private handles: Handle[] = [];
   private tLabel: CSS2DObject | null = null;
@@ -231,7 +238,7 @@ export class PhaseScene {
     this.controls.addEventListener('start', () => (this.userMoved = true));
     this.scene.add(this.staticGroup, this.dyn);
     this.dyn.add(this.stateGroup, this.pathGroup, this.regionGroup);
-    const amb = new THREE.AmbientLight(0xffffff, 1);
+    const amb = new THREE.AmbientLight(hexNum(SCENE.ambient), 1);
     this.scene.add(amb);
     this.initIso();
     this.initVert();
@@ -359,7 +366,7 @@ export class PhaseScene {
       geo.setColors(cols);
     }
     const mat = new LineMaterial({
-      color: Array.isArray(color) ? 0xffffff : color,
+      color: Array.isArray(color) ? hexNum(SCENE.ambient) : color,
       linewidth: width,
       vertexColors: Array.isArray(color),
       dashed: !!opts?.dashed,
@@ -414,7 +421,8 @@ export class PhaseScene {
     this.buildCompounds(G('compounds'));
     this.resetRegion();
     this.vKey = '';
-    this.isoKey = '';
+    this.vRas = null;
+    this.isoSec = null;
     this.dirty = true;
     // 相机目标高度
     this.controls.target.set(0, this.H * 0.45, 0);
@@ -438,11 +446,11 @@ export class PhaseScene {
     ];
     const bottom = V.map((v) => this.W(v, Tmin));
     const top = V.map((v) => this.W(v, Tmax));
-    const edgeCol = 0x202020;
+    const edgeCol = hexNum(SCENE.edge);
     // 底面（淡）
     const bg = new THREE.BufferGeometry().setFromPoints([bottom[0], bottom[1], bottom[2]]);
     bg.setIndex([0, 1, 2]);
-    frame.add(new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: 0xeef0f3, side: THREE.DoubleSide, depthWrite: false })));
+    frame.add(new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: hexNum(SCENE.background), side: THREE.DoubleSide, depthWrite: false })));
     // 外框
     frame.add(this.mkLineSeg([bottom[0], bottom[1], bottom[1], bottom[2], bottom[2], bottom[0], top[0], top[1], top[1], top[2], top[2], top[0]], edgeCol, 1));
     // 纯组元竖边
@@ -460,7 +468,7 @@ export class PhaseScene {
       const j = (i + 1) % 3;
       const g = new THREE.BufferGeometry().setFromPoints([bottom[i], bottom[j], top[j], top[i]]);
       g.setIndex([0, 1, 2, 0, 2, 3]);
-      frame.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xdfe2e6, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
+      frame.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: hexNum(SCENE.wall), transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
     }
     // 温度刻度：水平细线 + 标注（A 竖边与 B 竖边）
     const pts: THREE.Vector3[] = [];
@@ -475,7 +483,7 @@ export class PhaseScene {
       const pb = this.W(V[1], T);
       this.label(frame, new V3(pb.x + 0.065, pb.y, pb.z + 0.04), `${c}`, 'tick');
     }
-    frame.add(this.mkLineSeg(pts, 0x9da3ab, 0.55));
+    frame.add(this.mkLineSeg(pts, hexNum(SCENE.frameLine), 0.55));
     this.label(frame, new V3(-0.62, this.H + 0.06, 0.34), '温度 T / °C', 'axis');
     // 成分网格与刻度
     const gp: THREE.Vector3[] = [];
@@ -493,7 +501,7 @@ export class PhaseScene {
         gp.push(this.W(a, Tmin), this.W(b, Tmin));
       }
     }
-    grid.add(this.mkLineSeg(gp, 0xc3c8cf, 0.9));
+    grid.add(this.mkLineSeg(gp, hexNum(SCENE.grid), 0.9));
     for (let k = 2; k <= 8; k += 2) {
       const t = k / 10;
       const pAB = this.W([1 - t, t, 0], Tmin);
@@ -509,7 +517,6 @@ export class PhaseScene {
 
   private buildBinaryFaces(g: THREE.Group) {
     const d = this.d!;
-    const th = d.th;
     const edges: [number, number][] = [
       [0, 1],
       [1, 2],
@@ -527,7 +534,7 @@ export class PhaseScene {
         const x: Comp = [0, 0, 0];
         x[i] = 1 - t;
         x[j] = t;
-        const q = th.liquidus(x);
+        const q = d.liquidusFast(x);
         const c = new THREE.Color(solidColor(q.si));
         const top = this.W(x, Math.max(this.range.Tmin, q.T));
         const bot = this.W(x, this.range.Tmin);
@@ -552,7 +559,7 @@ export class PhaseScene {
     for (const iv of d.topo.invariants) {
       if (iv.rank !== 'binary') continue;
       const p = this.W(iv.x, iv.T);
-      const s = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), new THREE.MeshBasicMaterial({ color: iv.reaction.type === 'eutectic' ? 0x0072bd : 0xa2142f }));
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), new THREE.MeshBasicMaterial({ color: hexNum(iv.reaction.type === 'eutectic' ? COLOR.point.eutectic : COLOR.point.peritectic) }));
       s.position.copy(p);
       g.add(s);
       const out = new V3(p.x, 0, p.z).normalize().multiplyScalar(0.035);
@@ -562,8 +569,7 @@ export class PhaseScene {
 
   private buildLiquidus(g: THREE.Group) {
     const d = this.d!;
-    const th = d.th;
-    const N = 120;
+    const N = LIQ_GRID_N;
     const rowStart: number[] = [];
     let nv = 0;
     for (let i = 0; i <= N; i++) {
@@ -573,14 +579,14 @@ export class PhaseScene {
     const pos = new Float32Array(nv * 3);
     const tA = new Float32Array(nv * 4);
     const tB = new Float32Array(nv * 4);
-    const ns = d.ns;
+    const grid = d.liquidusGrid();
     for (let i = 0; i <= N; i++) {
       for (let j = 0; j <= N - i; j++) {
         const v = rowStart[i] + j;
         const x: Comp = [i / N, j / N, (N - i - j) / N];
         let best = 0;
         for (let s = 0; s < 8; s++) {
-          const t = s < ns ? th.Tsat(s, x) : 0;
+          const t = grid[v * 8 + s];
           if (s < 4) tA[v * 4 + s] = t;
           else tB[v * 4 + s - 4] = t;
           if (t > best) best = t;
@@ -650,7 +656,7 @@ export class PhaseScene {
 
   private buildCurves(g: THREE.Group, arrows: THREE.Group) {
     const d = this.d!;
-    const colOf = { eutectic: 0x1d2229, transition: 0xd95319, peritectic: 0xc00000 } as const;
+    const colOf = { eutectic: hexNum(COLOR.line.eutectic), transition: hexNum(COLOR.line.transition), peritectic: hexNum(COLOR.line.peritectic) } as const;
     const coneGeo = new THREE.ConeGeometry(0.014, 0.04, 14);
     coneGeo.rotateX(Math.PI / 2); // 尖端指向 +Z
     for (const cv of d.topo.curves) {
@@ -681,7 +687,7 @@ export class PhaseScene {
         }
       }
       for (const mi of cv.maxima) {
-        const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.016), new THREE.MeshBasicMaterial({ color: 0xedb120 }));
+        const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.016), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.compound[0]) }));
         m.position.copy(this.W(cv.pts[mi], cv.T[mi]));
         arrows.add(m);
         this.label(arrows, m.position.clone().add(new V3(0, 0.035, 0)), `<span class="tm">温度极大点 ${cel(cv.T[mi])}</span>`, 'tiny');
@@ -693,7 +699,7 @@ export class PhaseScene {
     const d = this.d!;
     for (const iv of d.topo.invariants) {
       if (iv.rank !== 'ternary') continue;
-      const col = iv.reaction.type === 'eutectic' ? 0x0072bd : iv.reaction.type === 'transition' ? 0xd95319 : 0xa2142f;
+      const col = hexNum(COLOR.point[iv.reaction.type]);
       const p = this.W(iv.x, iv.T);
       const s = new THREE.Mesh(new THREE.SphereGeometry(0.02, 18, 14), new THREE.MeshBasicMaterial({ color: col, clippingPlanes: [this.cutPlane] }));
       s.position.copy(p);
@@ -742,10 +748,10 @@ export class PhaseScene {
         this.detailLabels.push({ si: ci.si, l: this.label(g, hyp.clone().add(new V3(0.045, -0.01, 0)), `<span class="tm">假想熔点（亚稳）${cel(ci.Thyp)}</span>`, 'tiny') });
         // 该成分点处实际液相线
         const act = this.W(s.n, ci.Tliq);
-        const mk = new THREE.Mesh(new THREE.SphereGeometry(0.01, 10, 8), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+        const mk = new THREE.Mesh(new THREE.SphereGeometry(0.01, 10, 8), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.black) }));
         mk.position.copy(act);
         g.add(mk);
-        g.add(this.mkLine([hyp, act], 0x555555, 1.2, { dashed: true, opacity: 0.8 }));
+        g.add(this.mkLine([hyp, act], hexNum(SCENE.hypothetical), 1.2, { dashed: true, opacity: 0.8 }));
         this.detailLabels.push({ si: ci.si, l: this.label(g, act.clone().add(new V3(0.045, 0.012, 0)), `<span class="tm">此处实际液相线 ${cel(ci.Tliq)}（${d.solids[ci.liqSi].label} 初晶）</span>`, 'tiny') });
       }
     }
@@ -781,11 +787,11 @@ export class PhaseScene {
     this.isoMesh.renderOrder = 3;
     this.dyn.add(this.isoMesh);
     // 外框
-    const outline = this.mkLine([new V3(-0.5, 0, H0), new V3(0.5, 0, H0), new V3(0, 0, H0 - SQRT3_2), new V3(-0.5, 0, H0)], 0x0072bd, 2);
+    const outline = this.mkLine([new V3(-0.5, 0, H0), new V3(0.5, 0, H0), new V3(0, 0, H0 - SQRT3_2), new V3(-0.5, 0, H0)], hexNum(COLOR.accent), 2);
     outline.name = 'isoOutline';
     this.isoMesh.add(outline);
     // T 手柄
-    const h = new THREE.Mesh(new THREE.SphereGeometry(0.028, 18, 14), new THREE.MeshBasicMaterial({ color: 0x0072bd }));
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.028, 18, 14), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.accent) }));
     h.renderOrder = 6;
     this.isoMesh.add(h);
     h.position.set(0.5, 0, H0);
@@ -810,12 +816,12 @@ export class PhaseScene {
     this.vMesh.renderOrder = 2;
     this.dyn.add(this.vMesh);
     for (const kind of ['p1', 'p2'] as const) {
-      const h = new THREE.Mesh(new THREE.SphereGeometry(0.03, 18, 14), new THREE.MeshBasicMaterial({ color: 0x1f4e79, depthTest: false }));
+      const h = new THREE.Mesh(new THREE.SphereGeometry(0.03, 18, 14), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.accent2), depthTest: false }));
       h.renderOrder = 6;
       this.dyn.add(h);
       this.handles.push({ mesh: h, kind });
     }
-    const hs = new THREE.Mesh(new THREE.SphereGeometry(0.035, 18, 14), new THREE.MeshBasicMaterial({ color: 0xc00000, depthTest: false }));
+    const hs = new THREE.Mesh(new THREE.SphereGeometry(0.035, 18, 14), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.stateX0), depthTest: false }));
     hs.renderOrder = 7;
     this.dyn.add(hs);
     this.handles.push({ mesh: hs, kind: 'state' });
@@ -825,14 +831,13 @@ export class PhaseScene {
     if (!this.isoMesh || !this.isoTex) return;
     this.isoMesh.visible = s.isoOn;
     this.isoMesh.position.y = this.yOf(s.T);
-    const key = `${s.diagram.uid}|${s.T.toFixed(2)}`;
-    if (key !== this.isoKey) {
-      this.isoKey = key;
-      const sec = computeIso(s.diagram, s.T);
+    const { sec } = isoOf(s.diagram, s.T);
+    if (sec && sec !== this.isoSec) {
+      this.isoSec = sec;
       const ctx = this.isoCanvas.getContext('2d')!;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, 768, 768);
-      drawIso(ctx, 768, 768, sec, s.diagram, THEME_LIGHT, { pad: 56, grid: true, ticks: false, labels: true, ties: true, fontPx: 22 });
+      drawIsoTexture(ctx, 768, 768, sec, s.diagram, THEME_LIGHT, { pad: 56, grid: true, ticks: false, labels: true, ties: true, fontPx: 22 });
       this.isoTex.needsUpdate = true;
     }
     if (this.tLabel) {
@@ -856,16 +861,27 @@ export class PhaseScene {
     this.vMesh.geometry.computeBoundingSphere();
     this.vMesh.geometry.computeBoundingBox();
     const key = `${s.diagram.uid}|${spec.p1.map((v) => v.toFixed(4))}|${spec.p2.map((v) => v.toFixed(4))}`;
-    if (key !== this.vKey) {
+    const paint = (ras: VerticalRaster, W: number, H: number) => {
+      const ctx = this.vCanvas.getContext('2d')!;
+      ctx.setTransform(this.vCanvas.width / W, 0, 0, this.vCanvas.height / H, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      drawVertical(ctx, W, H, ras, s.diagram, spec, THEME_LIGHT, { margin: { l: 0, r: 0, t: 0, b: 0 }, fontPx: 16 * (W / 640) * 1.0, labels: true, axes: false, liquidAlpha: 40 });
+      this.vTex!.needsUpdate = true;
+      this.dirty = true;
+    };
+    if (useWorkerFor(s.diagram.params)) {
+      // 固溶体体系：栅格在 Worker 中计算（先粗后精），结果到达后经 asyncTick 触发本函数重绘
+      const { ras } = verticalOf(s.diagram, spec, 640, 460, this.range.Tmin, this.range.Tmax);
+      if (ras && ras !== this.vRas) {
+        this.vRas = ras;
+        paint(ras, ras.W, ras.H);
+      }
+      this.vKey = key;
+    } else if (key !== this.vKey) {
       this.vKey = key;
       const draw = (W: number, H: number) => {
-        const ras = computeVertical(s.diagram, spec, W, H, this.range.Tmin, this.range.Tmax);
-        const ctx = this.vCanvas.getContext('2d')!;
-        ctx.setTransform(this.vCanvas.width / W, 0, 0, this.vCanvas.height / H, 0, 0);
-        ctx.clearRect(0, 0, W, H);
-        drawVertical(ctx, W, H, ras, s.diagram, spec, THEME_LIGHT, { margin: { l: 0, r: 0, t: 0, b: 0 }, fontPx: 16 * (W / 640) * 1.0, labels: true, axes: false, liquidAlpha: 40 });
-        this.vTex!.needsUpdate = true;
-        this.dirty = true;
+        const { ras } = verticalOf(s.diagram, spec, W, H, this.range.Tmin, this.range.Tmax);
+        if (ras) paint(ras, W, H);
       };
       draw(160, 115);
       window.clearTimeout(this.vTimer);
@@ -892,7 +908,7 @@ export class PhaseScene {
       this.vOutline.removeFromParent();
       this.vOutline.geometry.dispose();
     }
-    this.vOutline = this.mkLine([a, b, bT, aT, a], 0x1f4e79, 1.8);
+    this.vOutline = this.mkLine([a, b, bT, aT, a], hexNum(COLOR.accent2), 1.8);
     this.dyn.add(this.vOutline);
   }
 
@@ -963,7 +979,8 @@ export class PhaseScene {
       l.visible = vis;
     }
     for (const dl of this.detailLabels) dl.l.visible = dl.l.visible && s.selection?.kind === 'compound' && s.selection.si === dl.si;
-    if (this.tLabel) this.tLabel.visible = s.isoOn;
+    // 温度读数改由图窗右下角的徽标显示（避免与温度轴文字重叠）
+    if (this.tLabel) this.tLabel.visible = false;
   }
 
   private updateTLine(s: SceneState, spec: VerticalSpec) {
@@ -975,7 +992,7 @@ export class PhaseScene {
     if (!s.vertOn) return;
     const a = this.W(spec.p1, s.T).add(new V3(0, 0.001, 0));
     const b = this.W(spec.p2, s.T).add(new V3(0, 0.001, 0));
-    this.vTLine = this.mkLine([a, b], 0x0072bd, 1.8, { dashed: true });
+    this.vTLine = this.mkLine([a, b], hexNum(COLOR.accent), 1.8, { dashed: true });
     this.dyn.add(this.vTLine);
   }
 
@@ -995,29 +1012,29 @@ export class PhaseScene {
     const base = this.W(s.x0, this.range.Tmin);
     const p = this.W(s.x0, s.T);
     // 成分竖线
-    this.stateGroup.add(this.mkLine([base, this.W(s.x0, this.range.Tmax)], 0xc00000, 1.2, { dashed: true, opacity: 0.8 }));
+    this.stateGroup.add(this.mkLine([base, this.W(s.x0, this.range.Tmax)], hexNum(COLOR.stateX0), 1.2, { dashed: true, opacity: 0.8 }));
     const hs = this.handles.find((h) => h.kind === 'state')!;
     hs.mesh.position.copy(p);
     // 平衡相标记 / 连结线
     const eq = s.eq;
     const pts = eq.phases.map((q) => ({ p: this.W(q.x, s.T), q }));
     if (s.layers.tieTriangle) {
-      if (pts.length === 2) this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p], 0x111111, 2));
+      if (pts.length === 2) this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p], hexNum(COLOR.black), 2));
       if (pts.length === 3) {
         const geo = new THREE.BufferGeometry().setFromPoints(pts.map((q) => q.p));
         geo.setIndex([0, 1, 2]);
-        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false })));
-        this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p, pts[2].p, pts[0].p], 0x111111, 2));
+        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: hexNum(SCENE.black), transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false })));
+        this.stateGroup.add(this.mkLine([pts[0].p, pts[1].p, pts[2].p, pts[0].p], hexNum(COLOR.black), 2));
       }
       if (pts.length === 4) {
         // 四相不变反应：液相点与三固相点（连结线 + 固相三角形）
         const L0 = pts.find((q) => q.q.si < 0) ?? pts[0];
         const sol = pts.filter((q) => q !== L0);
-        this.stateGroup.add(this.mkLineSeg([L0.p, sol[0].p, L0.p, sol[1].p, L0.p, sol[2].p], 0x111111, 0.9));
+        this.stateGroup.add(this.mkLineSeg([L0.p, sol[0].p, L0.p, sol[1].p, L0.p, sol[2].p], hexNum(COLOR.black), 0.9));
         const geo = new THREE.BufferGeometry().setFromPoints(sol.map((q) => q.p));
         geo.setIndex([0, 1, 2]);
-        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xedb120, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false })));
-        this.stateGroup.add(this.mkLine([sol[0].p, sol[1].p, sol[2].p, sol[0].p], 0xb8860b, 2));
+        this.stateGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: hexNum(COLOR.compound[0]), transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false })));
+        this.stateGroup.add(this.mkLine([sol[0].p, sol[1].p, sol[2].p, sol[0].p], hexNum(SCENE.tieEdge), 2));
       }
       if (pts.length > 1) {
         for (const q of pts) {
@@ -1044,10 +1061,10 @@ export class PhaseScene {
         all.push(w);
         if (q.t <= cur.t + 1e-9) done.push(w);
       }
-      if (all.length > 1) this.pathGroup.add(this.mkLine(all, 0x7e2f8e, 1.4, { dashed: true, opacity: 0.55 }));
-      if (done.length > 1) this.pathGroup.add(this.mkLine(done, 0x7e2f8e, 3));
+      if (all.length > 1) this.pathGroup.add(this.mkLine(all, hexNum(COLOR.path), 1.4, { dashed: true, opacity: 0.55 }));
+      if (done.length > 1) this.pathGroup.add(this.mkLine(done, hexNum(COLOR.path), 3));
       if (done.length) {
-        const m = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 10), new THREE.MeshBasicMaterial({ color: 0x7e2f8e, depthTest: false }));
+        const m = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 10), new THREE.MeshBasicMaterial({ color: hexNum(COLOR.path), depthTest: false }));
         m.position.copy(done[done.length - 1]);
         m.renderOrder = 5;
         this.pathGroup.add(m);
@@ -1073,20 +1090,24 @@ export class PhaseScene {
     const pos: number[] = [];
     const ln: THREE.Vector3[] = [];
     const nS = 36;
-    for (let k = 0; k <= nS; k++) {
-      const T = this.range.Tmin + 10 + (k / nS) * (this.range.Tmax - this.range.Tmin - 10);
-      const sec = isothermal(d, T);
-      for (const r of sec.regions) {
-        if (r.key !== rk) continue;
-        const p0 = this.W(r.poly[0], T);
-        for (let i = 1; i < r.poly.length - 1; i++) {
-          const p1 = this.W(r.poly[i], T);
-          const p2 = this.W(r.poly[i + 1], T);
+    const Ts = Array.from({ length: nS + 1 }, (_, k) => this.range.Tmin + 10 + (k / nS) * (this.range.Tmax - this.range.Tmin - 10));
+    const slices = regionSlicesOf(d, rk, Ts);
+    if (!slices) {
+      // 固溶体体系：Worker 中计算，结果到达（asyncTick）后重试
+      this.regionKey = '';
+      return;
+    }
+    for (const { T, polys } of slices) {
+      for (const poly of polys) {
+        const p0 = this.W(poly[0], T);
+        for (let i = 1; i < poly.length - 1; i++) {
+          const p1 = this.W(poly[i], T);
+          const p2 = this.W(poly[i + 1], T);
           pos.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
         }
-        for (let i = 0; i < r.poly.length; i++) {
-          const a = this.W(r.poly[i], T);
-          const b = this.W(r.poly[(i + 1) % r.poly.length], T);
+        for (let i = 0; i < poly.length; i++) {
+          const a = this.W(poly[i], T);
+          const b = this.W(poly[(i + 1) % poly.length], T);
           ln.push(a, b);
         }
       }

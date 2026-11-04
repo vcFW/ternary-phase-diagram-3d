@@ -7,8 +7,11 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, Handle, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
-import { Derivation, Eq, KV, M, MatrixView, Panel } from '../../viz/MathView';
-import { Segmented, SliderRow } from '../../ui/controls';
+import { Derivation, KV, MatrixView, Panel } from '../../viz/MathView';
+import { Segmented } from '../../ui/controls';
+import { LocalParam } from '../../ui/LocalParam';
+import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 /**
  * 等温线 = 液相面 T = T_liq(x) 的等值集；界线 = 三维空间曲线 (x(s), T(s)) 的投影。
@@ -70,9 +73,9 @@ export function GeometrySection() {
               </TernaryPlot>
             </div>
             <div className="legend-inline">
-              <span><i style={{ background: '#d95319' }} />−∇T_liq（最速降温方向）</span>
-              <span><i style={{ background: '#7b8490' }} />等温线切向（⊥ ∇T）</span>
-              <span><i style={{ background: '#0072bd' }} />初晶析出时液相移动方向（背离 {s.label}）</span>
+              <span><i style={{ background: COLOR.component[0] }} />−∇T_liq（最速降温方向）</span>
+              <span><i style={{ background: COLOR.muted }} />等温线切向（⊥ ∇T）</span>
+              <span><i style={{ background: COLOR.accent }} />初晶析出时液相移动方向（背离 {s.label}）</span>
             </div>
             <KV
               rows={[
@@ -84,7 +87,7 @@ export function GeometrySection() {
             />
             <div className="callout warn">
               两者一般不重合（夹角 {Number.isFinite(ang) ? ang.toFixed(0) : '—'}°）：液相不是"顺着最陡的坡往下流"。它的方向由质量守恒
-              <M> x₀ = f_L x_L + f_s x_s </M> 唯一确定 —— x_L 必须在 x_s→x₀ 射线上背离 x_s；温度只决定它沿这条射线走多远。
+              <TeX>{String.raw`x_0 = f_L x_L + f_s x_s`}</TeX> 唯一确定 —— x_L 必须在 x_s→x₀ 射线上背离 x_s；温度只决定它沿这条射线走多远。
             </div>
           </Panel>
           <Derivation
@@ -92,7 +95,7 @@ export function GeometrySection() {
             steps={[
               { kind: 'known', body: <>液相面 T = T_liq(u, v)（本模型中 T_liq = max_s T_s(x) 有闭式解）。</> },
               { kind: 'govern', body: <>等温线 Γ_T₀ = {'{'}(u,v) : T_liq(u,v) = T₀{'}'} = 液相面 ∩ 平面 T = T₀ 的投影。</> },
-              { kind: 'op', body: <>沿 Γ 求导：<M>∇T·(du, dv) = 0</M> ⇒ 等温线切向 ⊥ ∇T。</> },
+              { kind: 'op', body: <>沿 Γ 求导：<TeX>{String.raw`\nabla T \cdot (du, dv) = 0`}</TeX> ⇒ 等温线切向 ⊥ ∇T。</> },
               { kind: 'mid', body: <>相邻等温线（差 ΔT）的间距 ≈ ΔT / |∇T|：线越密，液相面越陡。</> },
               { kind: 'result', body: <>二维图中的"疏密"就是 |∇T| 的离散编码；方向信息由等温线的走向给出。</> },
               { kind: 'valid', body: <>只在同一初晶面内成立；跨越界线时 T_liq 连续但不可导（两张曲面取最大），等温线出现折角。</> },
@@ -123,22 +126,22 @@ export function GeometrySection() {
                       const t: [number, number] = [fr.tCool[0], -fr.tCool[1]];
                       return (
                         <>
-                          <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={2.6} opacity={0.5} />
+                          <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={2.6} opacity={0.5} />
                           <Arrow p={p} q={[p[0] + t[0] * L, p[1] + t[1] * L]} cls="tan" />
-                          <circle cx={p[0]} cy={p[1]} r={4} fill="#7e2f8e" />
+                          <circle cx={p[0]} cy={p[1]} r={4} fill={COLOR.path} />
                         </>
                       );
                     }}
                   </TernaryPlot>
                 </div>
-                <SliderRow label="弧长 s / L" labelWidth={80} value={sFrac} min={0} max={1} step={0.005} digits={3} onChange={setSFrac} />
+                <LocalParam label="弧长 s / L" labelWidth={80} value={sFrac} min={0} max={1} step={0.005} digits={3} onChange={setSFrac} />
                 <XYPlot
                   height={170}
-                  series={[{ id: 'T', pts: Tseries, color: '#1d2229', label: 'T(s)：界线温度（三维曲线的高度）' }]}
+                  series={[{ id: 'T', pts: Tseries, color: COLOR.ink, label: 'T(s)：界线温度（三维曲线的高度）' }]}
                   xlabel="弧长 s（单位边长）"
                   ylabel="T / °C"
-                  vlines={[{ x: fr.s, color: '#7e2f8e' }]}
-                  points={[{ x: fr.s, y: toC(fr.T), color: '#7e2f8e' }]}
+                  vlines={[{ x: fr.s, color: COLOR.path }]}
+                  points={[{ x: fr.s, y: toC(fr.T), color: COLOR.path }]}
                   onPick={(x) => setSFrac(Math.max(0, Math.min(1, x / cp.length)))}
                 />
                 <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>
@@ -165,7 +168,7 @@ export function GeometrySection() {
                 温度不能直接量：被 P 映到零 —— 必须借助等温线、不变点标注或热力学模型。
               </li>
             </ul>
-            <Eq>γ(s) = (x(s), T(s)) ∈ R³　⟶　P∘γ(s) = x(s) ∈ R²</Eq>
+            <TeXBlock>{String.raw`\gamma(s) = (x(s), T(s)) \in \mathbb R^3 \;\longrightarrow\; P\circ\gamma(s) = x(s) \in \mathbb R^2`}</TeXBlock>
             <p className="dim small">提示：上图组元记号 {sym.join('、')}；颜色块表示初晶区（{d.solids.map((q) => q.label).join('、')}）。</p>
           </Panel>
         </div>

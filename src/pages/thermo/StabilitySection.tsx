@@ -1,10 +1,14 @@
 import { useMemo } from 'react';
 import { cel, solidColor, toC, toK } from '../../core/colors';
 import { fmtNum } from '../../math/linalg';
+import { StabilityPanel } from '../../panels/PointPanels';
+import { usePointAnalysis } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
-import { Derivation, Eq, KV, M, Panel } from '../../viz/MathView';
+import { Derivation, KV, Panel } from '../../viz/MathView';
+import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 /**
  * 温度与相稳定性：均匀液相 x₀ 对每个固相的析出驱动力
@@ -16,6 +20,7 @@ export function StabilitySection() {
   const x0 = useStore((s) => s.x0);
   const T = useStore((s) => s.T);
   const setT = useStore((s) => s.setT);
+  const an = usePointAnalysis();
   const th = d.th;
   const { Tmin, Tmax } = d.tRange();
   const data = useMemo(() => {
@@ -48,8 +53,8 @@ export function StabilitySection() {
               series={data.df}
               xlabel="T / °C"
               ylabel="Δ_s / (kJ·mol⁻¹)"
-              hlines={[{ y: 0, color: '#1d2229', dash: '' }]}
-              vlines={[{ x: toC(liq.T), color: '#c00000', label: '液相线' }, { x: toC(T), color: '#7b8490', label: '当前 T' }]}
+              hlines={[{ y: 0, color: COLOR.ink, dash: '' }]}
+              vlines={[{ x: toC(liq.T), color: COLOR.stateX0, label: '液相线' }, { x: toC(T), color: COLOR.muted, label: '当前 T' }]}
               onPick={(x) => setT(toK(x))}
             />
             <table className="grid">
@@ -77,16 +82,19 @@ export function StabilitySection() {
             </table>
             <p className="note">点击图可设置全局温度。驱动力按"每摩尔原子的固相"计。</p>
           </Panel>
+          <Panel title="平衡解是否为全局最小（与工作台检查器同源）" prov="model">
+            {an ? <StabilityPanel an={an} /> : <p className="dim">计算中…</p>}
+          </Panel>
           <Panel title="均匀液相 vs 平衡态的总吉布斯能" prov="model">
             <XYPlot
               height={220}
               series={[
-                { id: 'L', pts: data.gL, color: '#3a78b5', label: 'G_L(x₀, T)：强制保持均匀液相' },
-                { id: 'E', pts: data.gE, color: '#c00000', dash: '5 3', label: 'G_eq(T)：最小化后的平衡态' },
+                { id: 'L', pts: data.gL, color: COLOR.phase.liquid, label: 'G_L(x₀, T)：强制保持均匀液相' },
+                { id: 'E', pts: data.gE, color: COLOR.stateX0, dash: '5 3', label: 'G_eq(T)：最小化后的平衡态' },
               ]}
               xlabel="T / °C"
               ylabel="G / (kJ·mol⁻¹)"
-              vlines={[{ x: toC(liq.T), color: '#c00000' }]}
+              vlines={[{ x: toC(liq.T), color: COLOR.stateX0 }]}
             />
             <p>液相线以上两线重合（均匀液相就是最小值）；以下 G_eq &lt; G_L，差值为析晶（相分离）带来的吉布斯能降低。G_eq 在不变点处有斜率突变（熵突变 = 潜热）。</p>
           </Panel>
@@ -95,10 +103,10 @@ export function StabilitySection() {
           <Derivation
             title="推导：液相线温度的闭式解"
             steps={[
-              { kind: 'known', body: <>液相（正规溶液）化学势 <M>μᵢᴸ = ΔHᵢ(1 − T/Tmᵢ) + RT ln xᵢ + μᵢᴱˣ</M>（以纯固相为基准）；化学计量固相 s（组成 n）<M>G_s = ΔH_f − TΔS_f</M>；固溶体见下方推广。</> },
-              { kind: 'govern', body: <Eq>饱和（平衡）条件：Σ nᵢ μᵢᴸ(x, T) = G_s(T)</Eq> },
+              { kind: 'known', body: <>液相（正规溶液）化学势 <TeX>{String.raw`\mu_i^{L} = \Delta H_i\,(1 - T/T_{m,i}) + RT\ln x_i + \mu_i^{\mathrm{ex}}`}</TeX>（以纯固相为基准）；化学计量固相 s（组成 n）<TeX>{String.raw`G_s = \Delta H_f - T\,\Delta S_f`}</TeX>；固溶体见下方推广。</> },
+              { kind: 'govern', body: <TeXBlock note="饱和（平衡）条件：">{String.raw`\sum_i n_i\,\mu_i^{L}(x,T) = G_s(T)`}</TeXBlock> },
               { kind: 'op', body: <>左右两边都是 T 的一次函数（正规溶液 S_ex = 0，ΔCp = 0），直接解出 T。</> },
-              { kind: 'result', body: <Eq>T_s(x) = (H_s + Σ nᵢ μᵢᴱˣ) / (S_s − R Σ nᵢ ln xᵢ)</Eq> },
+              { kind: 'result', body: <TeXBlock>{String.raw`T_s(x) = \frac{H_s + \sum_i n_i\,\mu_i^{\mathrm{ex}}}{S_s - R\sum_i n_i \ln x_i}`}</TeXBlock> },
               { kind: 'mid', body: <>H_s = Σ nᵢΔHᵢ − ΔH_f，S_s = Σ nᵢΔHᵢ/Tmᵢ − ΔS_f。对纯组元 s = A 且理想液相：T = ΔH_A/(ΔH_A/Tm_A − R ln x_A) —— Schröder–van Laar 方程。</> },
               { kind: 'phys', body: <>Δ_s(T) = Σnμᴸ − G_s 关于 T 单调（斜率 = −(S_s − RΣn ln x) &lt; 0）：降温使驱动力增大。液相面 = max_s T_s(x)：最先失稳的固相决定初晶区。</> },
               { kind: 'op', title: '固溶体的推广', body: <>固相 s 为固溶体时驱动力 Δ_s = max_y [μᴸ·y − G_s(y,T)]（最有利的析出成分 y*）。对固定 y 它仍是 T 的一次函数 A(y) − T·B(y)，于是交替执行 T ← A(y)/B(y) 与 y ← y*(T)：这正是对 Δ_s(T) = 0 的牛顿迭代（包络定理 dΔ/dT = −B(y*)），收敛时 y* 即与液相共轭的固相成分。</> },

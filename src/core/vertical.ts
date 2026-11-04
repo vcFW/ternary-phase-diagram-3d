@@ -28,6 +28,51 @@ export interface VerticalRaster {
   liquidus: Float64Array;
   /** 沿线各固相饱和温度（用于亚稳线绘制） */
   tsat: Float64Array[];
+  /** 相界：同一界面在相邻温度行上的交点按连续性连成的折线，点为 [u, T(K)] */
+  boundaries: { pts: [number, number][] }[];
+}
+
+interface RowBreak {
+  u: number;
+  a: number;
+  b: number;
+}
+
+/** 把逐行找到的相界点（左相 a | 右相 b 的位置 u）按连续性连成折线（行序 = 温度由高到低） */
+function linkBoundaries(rows: RowBreak[][], Tof: (j: number) => number): { pts: [number, number][] }[] {
+  const done: { pts: [number, number][] }[] = [];
+  let open: { a: number; b: number; pts: [number, number][]; lastRow: number }[] = [];
+  rows.forEach((bps, j) => {
+    const used = new Set<(typeof open)[number]>();
+    for (const bp of bps) {
+      let best: (typeof open)[number] | null = null;
+      let bd = 0.06;
+      for (const c of open) {
+        if (used.has(c) || c.a !== bp.a || c.b !== bp.b || c.lastRow !== j - 1) continue;
+        const dd = Math.abs(c.pts[c.pts.length - 1][0] - bp.u);
+        if (dd < bd) {
+          bd = dd;
+          best = c;
+        }
+      }
+      if (best) {
+        best.pts.push([bp.u, Tof(j)]);
+        best.lastRow = j;
+        used.add(best);
+      } else {
+        const c = { a: bp.a, b: bp.b, pts: [[bp.u, Tof(j)] as [number, number]], lastRow: j };
+        open.push(c);
+        used.add(c);
+      }
+    }
+    open = open.filter((c) => {
+      if (c.lastRow === j) return true;
+      if (c.pts.length > 1) done.push({ pts: c.pts });
+      return false;
+    });
+  });
+  for (const c of open) if (c.pts.length > 1) done.push({ pts: c.pts });
+  return done;
 }
 
 export function lerpComp(a: Comp, b: Comp, t: number): Comp {
@@ -77,8 +122,11 @@ export function verticalRaster(d: PhaseDiagram, spec: VerticalSpec, W: number, H
   const pairs: [number, number][] = [];
   for (let a = 0; a < ns; a++) for (let b = a + 1; b < ns; b++) pairs.push([a, b]);
   const solidXY = d.solids.map((s) => toXY(s.n));
+  const rowBreaks: RowBreak[][] = [];
 
   for (let j = 0; j < H; j++) {
+    const bps: RowBreak[] = [];
+    rowBreaks.push(bps);
     const T = Tmax - ((j + 0.5) / H) * (Tmax - Tmin);
     const br: number[] = [0, 1, ...staticBreaks];
     // (i)
@@ -121,13 +169,16 @@ export function verticalRaster(d: PhaseDiagram, spec: VerticalSpec, W: number, H
       if (liquidus[ki] <= T - 1e-9 && th.liquidus(xm).T <= T) id = 0;
       else id = idOf(d.equilibrium(xm, T).key);
       if (id === prevId) continue;
-      if (prevId >= 0) paint(prevU, u0, prevId);
+      if (prevId >= 0) {
+        paint(prevU, u0, prevId);
+        bps.push({ u: u0, a: prevId, b: id });
+      }
       prevId = id;
       prevU = u0;
     }
     if (prevId >= 0) paint(prevU, 1, prevId);
   }
-  return { W, H, Tmin, Tmax, labels, keys, liquidus, tsat };
+  return { W, H, Tmin, Tmax, labels, keys, liquidus, tsat, boundaries: linkBoundaries(rowBreaks, (j) => Tmax - ((j + 0.5) / H) * (Tmax - Tmin)) };
 }
 
 /** 截面线与某成分点的最近距离处的参数 u，距离过大返回 null（用于标出化合物线位置） */
@@ -167,6 +218,7 @@ function scanRaster(d: PhaseDiagram, spec: VerticalSpec, W: number, H: number, T
   const labels = new Uint16Array(W * H);
   const K = 40;
   const U = liquidus.length;
+  const rowBreaks: RowBreak[][] = [];
   let rowHint: ReturnType<PhaseDiagram['equilibrium']> | null = null;
   for (let j = 0; j < H; j++) {
     const T = Tmax - ((j + 0.5) / H) * (Tmax - Tmin);
@@ -190,6 +242,8 @@ function scanRaster(d: PhaseDiagram, spec: VerticalSpec, W: number, H: number, T
       if (k === 0) rowHint = eq ?? rowHint;
     }
     const row = j * W;
+    const bps: RowBreak[] = [];
+    rowBreaks.push(bps);
     let u0 = 0;
     for (let k = 0; k < K; k++) {
       if (ks[k + 1] === ks[k]) continue;
@@ -209,10 +263,11 @@ function scanRaster(d: PhaseDiagram, spec: VerticalSpec, W: number, H: number, T
         else hi = m;
       }
       const ub = 0.5 * (lo + hi);
+      bps.push({ u: ub, a: ks[k], b: ks[k + 1] });
       for (let c = Math.round(u0 * W); c < Math.round(ub * W); c++) labels[row + c] = ks[k];
       u0 = ub;
     }
     for (let c = Math.round(u0 * W); c < W; c++) labels[row + c] = ks[K];
   }
-  return { W, H, Tmin, Tmax, labels, keys, liquidus, tsat };
+  return { W, H, Tmin, Tmax, labels, keys, liquidus, tsat, boundaries: linkBoundaries(rowBreaks, (j) => Tmax - ((j + 0.5) / H) * (Tmax - Tmin)) };
 }

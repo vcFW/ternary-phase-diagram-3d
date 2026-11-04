@@ -1,11 +1,12 @@
 import { cel, phaseColor, regionName } from '../core/colors';
 import { getPreset } from '../core/presets';
 import { useStore } from '../state/store';
+import { TERMS, termFull } from '../core/terms';
 import type { ReactionType } from '../core/types';
 
 const KIND_DESC: Record<ReactionType, string> = {
   eutectic: '共晶型：液相降温时两固相同时析出（L → α + β），单箭头。',
-  transition: '过渡点（单转熔点）：L + α ⇌ β + γ。液相位于相容三角形之外；α 被回溶。',
+  transition: `${termFull(TERMS.transition)}：${TERMS.transition.reaction}。液相位于相容三角形之外；α 被回溶。`,
   peritectic: '转熔型：液相降温时先析出相被回溶、新相析出（L + α → β），双箭头。',
 };
 
@@ -82,7 +83,7 @@ export function InfoPanel() {
     detail = (
       <div className="info-card">
         <h4>{regionName(sel.key)}</h4>
-        <p>共存相：{ids.map((i) => (i === 'L' ? '液相 L' : `固相 ${i}`)).join('、')}；相数 P = {ids.length}，自由度 F = {4 - ids.length}。</p>
+        <p>共存相：{ids.map((i) => (i === 'L' ? '液相 L' : `固相 ${i}`)).join('、')}；相数 P = {ids.length}，一般成分（C = 3）下自由度 F = {Math.max(0, 3 - ids.length + 1)}。</p>
         <p>{ids.length === 1 ? '单相区：成分与温度都可独立变化。' : ids.length === 2 ? '两相区：连结线上的相成分由杠杆规则决定。' : '三相区：连结三角形，三相成分被固定在三角形顶点，F = 1。'}</p>
       </div>
     );

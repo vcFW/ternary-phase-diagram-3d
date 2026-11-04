@@ -8,9 +8,11 @@ import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Arrow, TernaryPlot } from '../../viz/TernaryPlot';
 import { XYPlot } from '../../viz/XYPlot';
-import { Eq, KV, M, MatrixView, Panel, Prov } from '../../viz/MathView';
-import { SliderRow } from '../../ui/controls';
+import { KV, MatrixView, Panel, Prov } from '../../viz/MathView';
+import { LocalParam } from '../../ui/LocalParam';
 import { Layers5 } from './RulesPage';
+import { COLOR } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
 function CurvePicker({ d, ci, setCi }: { d: PhaseDiagram; ci: number; setCi: (i: number) => void }) {
   return (
@@ -63,9 +65,9 @@ export function AlkemadeRule() {
                   return (
                     <>
                       <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.5} />
-                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke="#0072bd" strokeWidth={2} />
-                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={3} opacity={0.6} />
-                      <circle cx={p[0]} cy={p[1]} r={4.5} fill="#7e2f8e" />
+                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={2} />
+                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={3} opacity={0.6} />
+                      <circle cx={p[0]} cy={p[1]} r={4.5} fill={COLOR.path} />
                     </>
                   );
                 }}
@@ -73,17 +75,17 @@ export function AlkemadeRule() {
             </div>
             <XYPlot
               height={180}
-              series={[{ id: 'T', pts: cp.s.map((v2, k) => [v2, toC(cp.T[k])] as [number, number]), color: '#1d2229', label: 'T(s)' }]}
+              series={[{ id: 'T', pts: cp.s.map((v2, k) => [v2, toC(cp.T[k])] as [number, number]), color: COLOR.ink, label: 'T(s)' }]}
               xlabel="界线弧长 s"
               ylabel="T / °C"
               vlines={[
-                ...(ak.sCross !== null ? [{ x: ak.sCross, color: '#0072bd', label: '与连线相交' }] : []),
-                ...(ak.sMax !== null ? [{ x: ak.sMax, color: '#c00000', label: '温度极大', dash: '2 2' }] : []),
+                ...(ak.sCross !== null ? [{ x: ak.sCross, color: COLOR.accent, label: '与连线相交' }] : []),
+                ...(ak.sMax !== null ? [{ x: ak.sMax, color: COLOR.stateX0, label: '温度极大', dash: '2 2' }] : []),
               ]}
-              points={[{ x: s, y: toC(an.frame.T), color: '#7e2f8e' }]}
+              points={[{ x: s, y: toC(an.frame.T), color: COLOR.path }]}
               onPick={(x) => setSFrac(Math.max(0, Math.min(1, x / cp.length)))}
             />
-            <SliderRow label="位置 s/L" labelWidth={70} value={s / cp.length} min={0} max={1} step={0.002} digits={3} onChange={setSFrac} />
+            <LocalParam label="位置 s/L" labelWidth={70} value={s / cp.length} min={0} max={1} step={0.002} digits={3} onChange={setSFrac} />
             <KV
               rows={[
                 ['交点弧长 / 温度', <span className="mono">{ak.sCross !== null ? `${fmtNum(ak.sCross, 5)} / ${cel(ak.TCross!, 3)}` : '界线范围内无交点'}</span>],
@@ -118,10 +120,10 @@ export function AlkemadeRule() {
           math={
             <>
               <p>三相共存时每相满足 Gibbs–Duhem：</p>
-              <Eq>Sφ dT + Σᵢ xφᵢ dμᵢ = 0,　φ = L, α, β</Eq>
+              <TeXBlock>{String.raw`S^{\varphi}\,dT + \sum_i x_i^{\varphi}\,d\mu_i = 0,\quad \varphi = L,\alpha,\beta`}</TeXBlock>
               <p>写成 G·(dT, dμ)ᵀ = 0。若 x_L = (1−λ)x_α + λx_β，则</p>
-              <Eq>row_L − (1−λ)row_α − λ·row_β = [ΔS, 0, 0, 0]</Eq>
-              <p>其中 <M>ΔS = S_L − (1−λ)S_α − λS_β</M> 为该拟二元熔化熵（&gt; 0）。于是 ΔS·dT = 0 ⇒ <b>dT = 0</b>：交点处温度对界线弧长的导数为零。再由该点两侧液相分别位于连线两侧、反应方向相反可知它是极大。</p>
+              <TeXBlock>{String.raw`\mathrm{row}_L - (1-\lambda)\,\mathrm{row}_\alpha - \lambda\,\mathrm{row}_\beta = [\Delta S, 0, 0, 0]`}</TeXBlock>
+              <p>其中 <TeX>{String.raw`\Delta S = S_L - (1-\lambda)S_\alpha - \lambda S_\beta`}</TeX> 为该拟二元熔化熵（&gt; 0）。于是 ΔS·dT = 0 ⇒ <b>dT = 0</b>：交点处温度对界线弧长的导数为零。再由该点两侧液相分别位于连线两侧、反应方向相反可知它是极大。</p>
             </>
           }
           phys={<p>极大点是"α 与 β 一同熔化成同成分液相"的温度；离开它，液相必须偏离连线，任何偏离都需要更低温度才能与 α、β 同时平衡。这是一个纯粹由线性相关性导出的热力学结论。</p>}
@@ -195,18 +197,18 @@ export function TangentRule() {
                   return (
                     <>
                       <line x1={e0[0]} y1={e0[1]} x2={e1[0]} y2={e1[1]} className="lnk dash" opacity={0.45} />
-                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke="#0072bd" strokeWidth={2.2} />
-                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke="#c00000" strokeWidth={3} opacity={0.55} />
-                      {X && <line x1={p[0]} y1={p[1]} x2={X[0]} y2={X[1]} stroke="#7e2f8e" strokeWidth={1.3} strokeDasharray="5 3" />}
+                      <line x1={A[0]} y1={A[1]} x2={B[0]} y2={B[1]} stroke={COLOR.accent} strokeWidth={2.2} />
+                      <polyline points={cv.pts.map((x) => m.px(x).join(',')).join(' ')} fill="none" stroke={COLOR.stateX0} strokeWidth={3} opacity={0.55} />
+                      {X && <line x1={p[0]} y1={p[1]} x2={X[0]} y2={X[1]} stroke={COLOR.path} strokeWidth={1.3} strokeDasharray="5 3" />}
                       <Arrow p={p} q={[p[0] + t[0] * 55, p[1] + t[1] * 55]} cls="tan" />
-                      {X && <circle cx={X[0]} cy={X[1]} r={5} fill={ti.kind === 'eutectic' ? '#77ac30' : '#c00000'} stroke="#1d2229" />}
+                      {X && <circle cx={X[0]} cy={X[1]} r={5} fill={ti.kind === 'eutectic' ? COLOR.component[2] : COLOR.stateX0} stroke={COLOR.ink} />}
                       {X && <text x={X[0] + 7} y={X[1] + 14} className="pt-lab">x*（λ = {fmtNum(ti.lambda, 3)}）</text>}
                     </>
                   );
                 }}
               </TernaryPlot>
             </div>
-            <SliderRow label="位置 s/L" labelWidth={70} value={sFrac} min={0.02} max={0.98} step={0.002} digits={3} onChange={setSFrac} />
+            <LocalParam label="位置 s/L" labelWidth={70} value={sFrac} min={0.02} max={0.98} step={0.002} digits={3} onChange={setSFrac} />
             <div className="row" style={{ flexWrap: 'wrap', gap: 14 }}>
               <MatrixView name="[t | −(b−a)]" M={ti.M} digits={4} />
               <MatrixView name="a − p" M={ti.rhs.map((v) => [v])} digits={4} />
@@ -225,10 +227,10 @@ export function TangentRule() {
           <Panel title="λ 沿界线的变化" prov="model" sub="λ ∈ (0,1)：共晶型；越出：转熔型">
             <XYPlot
               height={170}
-              series={[{ id: 'l', pts: scan, color: '#7e2f8e', label: 'λ(s)' }]}
+              series={[{ id: 'l', pts: scan, color: COLOR.path, label: 'λ(s)' }]}
               ylim={[-1.5, 2.5]}
-              hlines={[{ y: 0, color: '#0072bd', label: 'λ = 0' }, { y: 1, color: '#0072bd', label: 'λ = 1' }]}
-              vlines={[{ x: s, color: '#7e2f8e' }]}
+              hlines={[{ y: 0, color: COLOR.accent, label: 'λ = 0' }, { y: 1, color: COLOR.accent, label: 'λ = 1' }]}
+              vlines={[{ x: s, color: COLOR.path }]}
               xlabel="界线弧长 s"
               ylabel="λ"
               onPick={(x) => setSFrac(Math.max(0.02, Math.min(0.98, x / cp.length)))}
@@ -246,11 +248,11 @@ export function TangentRule() {
           math={
             <>
               <p>微分质量守恒（L 为液相量）：</p>
-              <Eq>d(L·x_L) = −dn_a·x_a − dn_b·x_b,　dL = −(dn_a + dn_b)</Eq>
-              <Eq>L·dx_L = −(dn_a + dn_b)·(x* − x_L),　x* = (dn_a x_a + dn_b x_b)/(dn_a + dn_b)</Eq>
+              <TeXBlock>{String.raw`d(L x_L) = -dn_a x_a - dn_b x_b,\quad dL = -(dn_a + dn_b)`}</TeXBlock>
+              <TeXBlock>{String.raw`L\,dx_L = -(dn_a + dn_b)(x^{*} - x_L),\quad x^{*} = \frac{dn_a x_a + dn_b x_b}{dn_a + dn_b}`}</TeXBlock>
               <p>
                 故 x* 在过 x_L、方向为 dx_L 的直线上（τ &lt; 0 一侧），且在直线 ab 上。求交即解 2×2 线性方程组
-                <M> [t | −(b−a)]·(τ, λ)ᵀ = a − p</M>，x* = (1−λ)a + λb ⇒ dn_a : dn_b = (1−λ) : λ。
+                <TeX>{String.raw`[\,t \mid -(b-a)\,]\,(\tau,\lambda)^{\mathsf T} = a - p`}</TeX>，x* = (1−λ)a + λb ⇒ dn_a : dn_b = (1−λ) : λ。
                 λ ∉ [0,1] ⇒ 一个 dn 为负 ⇒ 该固相被回溶。
               </p>
             </>

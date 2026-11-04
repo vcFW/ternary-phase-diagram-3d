@@ -123,6 +123,31 @@ export function resolveSection(cfg: SectionConfig, d: PhaseDiagram, x0: Comp): V
   }
 }
 
+/** 点 x 到截面线段 p1–p2 的距离（笛卡尔，三角形边长为 1） */
+export function distToSection(spec: VerticalSpec, x: Comp): number {
+  const a = toXY(spec.p1);
+  const b = toXY(spec.p2);
+  const p = toXY(x);
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const L2 = dx * dx + dy * dy;
+  const t = L2 < EPS ? 0 : Math.min(1, Math.max(0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+
+/**
+ * 冷却模式要求截面经过状态点 x₀。若当前截面不经过，返回"过状态点"模式（沿用原截面方向）的新配置；
+ * 已经经过则返回 null。
+ */
+export function sectionThroughState(cfg: SectionConfig, d: PhaseDiagram, x0: Comp): SectionConfig | null {
+  if (cfg.mode === 'point') return null;
+  const spec = resolveSection(cfg, d, x0);
+  if (distToSection(spec, x0) < 1e-3) return null;
+  const a = toXY(spec.p1);
+  const b = toXY(spec.p2);
+  return { ...cfg, mode: 'point', angle: Math.atan2(b[1] - a[1], b[0] - a[0]) };
+}
+
 /** 把任意点投影到三角形周界上最近的点 */
 export function nearestOnPerimeter(x: Comp): Comp {
   const cands: Comp[] = [];

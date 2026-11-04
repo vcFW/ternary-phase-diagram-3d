@@ -5,9 +5,11 @@ import { invariantAnalyses } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { XYPlot, type Series } from '../../viz/XYPlot';
-import { Eq, M, Panel, Prov } from '../../viz/MathView';
+import { Panel, Prov } from '../../viz/MathView';
+import { COLOR, SERIES } from '../../ui/tokens';
+import { TeXBlock, TeX } from '../../viz/TeX';
 
-const PAL = ['#0072bd', '#d95319', '#77ac30', '#7e2f8e', '#edb120', '#4dbeee', '#a2142f'];
+const PAL: readonly string[] = SERIES;
 
 /**
  * 两种常被混用的"自由能图"：
@@ -38,7 +40,7 @@ export function ReactionGSection() {
       const x: [number, number, number] = [(1 - t) * (x0[0] + x0[1]), t * (x0[0] + x0[1]), x0[2]];
       pts.push([t, d.th.Gliq(x, T) / 1000]);
     }
-    return [{ id: 'g', pts, color: '#3a78b5', label: `G_L(x, T) 沿 x_C = ${x0[2].toFixed(2)} 的截线` }];
+    return [{ id: 'g', pts, color: COLOR.phase.liquid, label: `G_L(x, T) 沿 x_C = ${x0[2].toFixed(2)} 的截线` }];
   }, [d, x0, T]);
   return (
     <>
@@ -55,7 +57,7 @@ export function ReactionGSection() {
         </Panel>
         <Panel title="(2) 反应吉布斯能 ΔG_r(T) = Σ νᵢ Gᵢ" prov="model" sub="各不变点反应，相成分固定在不变点处">
           {!inv.length && <p className="dim">该体系没有不变点反应（例如三元匀晶），因此没有可画的 ΔG_r(T)。</p>}
-          <XYPlot height={230} series={series} xlabel="T / °C" ylabel="ΔG_r / (J·mol⁻¹)" hlines={[{ y: 0, color: '#1d2229', dash: '' }]} vlines={inv.map((a) => ({ x: toC(a.iv.T), color: '#7b8490' }))} />
+          <XYPlot height={230} series={series} xlabel="T / °C" ylabel="ΔG_r / (J·mol⁻¹)" hlines={[{ y: 0, color: COLOR.ink, dash: '' }]} vlines={inv.map((a) => ({ x: toC(a.iv.T), color: COLOR.muted }))} />
           <table className="grid">
             <thead>
               <tr>
@@ -85,7 +87,7 @@ export function ReactionGSection() {
       <div className="cols c2" style={{ marginTop: 10 }}>
         <Panel title="两者如何联系" prov="math">
           <p>在不变点，四相共切面 μ：每相 Gᵢ = μ·cᵢ。于是</p>
-          <Eq>ΔG_r = Σ νᵢ Gᵢ = μ·(Σ νᵢ cᵢ) = μ·(Nν) = 0</Eq>
+          <TeXBlock>{String.raw`\Delta G_r = \sum_i \nu_i G_i = \mu\cdot\Big(\sum_i \nu_i c_i\Big) = \mu\cdot(N\nu) = 0`}</TeXBlock>
           <p>
             —— 守恒（Nν = 0）与公切面一起，<b>推出</b>不变点温度处 ΔG_r = 0。表中两列温度一致正是这一点的数值验证。
             离开 T_inv，ΔG_r = ΔH_r − TΔS_r（本模型 ΔCp = 0），降温时 ΔG_r &lt; 0 ⇔ ΔS_r &lt; 0（消耗液相放出熵 / 潜热）。
@@ -99,7 +101,7 @@ export function ReactionGSection() {
           <p className="note">
             <Prov k="unknown" /> 本模型不含动力学（形核、扩散），因此不能预测过冷度或反应速率。
           </p>
-          <p className="note">当前 T = {cel(T, 1)}。<M>ΔG_r</M> 的单位为每摩尔液相。</p>
+          <p className="note">当前 T = {cel(T, 1)}。<TeX>{String.raw`\Delta G_r`}</TeX> 的单位为每摩尔液相。</p>
         </Panel>
       </div>
     </>

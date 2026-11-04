@@ -5,6 +5,7 @@ import { hexToRgb, mixRgb, solidColor } from '../core/colors';
 import type { PhaseDiagram } from '../core/diagram';
 import type { Comp } from '../core/types';
 import { useSize } from '../ui/useSize';
+import { COLOR } from '../ui/tokens';
 
 /**
  * 可复用的三元成分三角形（SVG）。底图（初晶区 / 液相面温度）以栅格图像嵌入，
@@ -75,7 +76,25 @@ export interface TernaryPlotProps {
   grid?: boolean;
   /** 等温线间隔 / K（0 为不画） */
   isoStep?: number;
+  /** 等温线上的温度数值标注 */
+  isoLabels?: boolean;
+  /** 界线上的降温方向箭头与温度极大点标记 */
+  arrows?: boolean;
+  /** 各初晶区的名称标注 */
+  fieldLabels?: boolean;
+  /** Alkemade（相容三角形）连线 */
+  alkemade?: boolean;
+  /** 高亮的界线 id */
+  selectedCurve?: string | null;
+  selectedInv?: string | null;
+  /**
+   * 'figure'：图窗（字号 11–13，留白大，刻度与轴标题齐全）；'compact'：分析页内嵌（字号略小）。
+   * 两者共用同一套坐标轴 / 刻度 / 线宽 / 相界颜色，只有尺寸不同。
+   */
+  variant?: 'figure' | 'compact';
+  /** 三角形四周留白（px）；缺省由 variant 与字号决定 */
   pad?: number;
+  fontPx?: number;
   /** 点击 / 拖动设定成分 */
   onPick?: (x: Comp, phase: 'down' | 'move' | 'up') => void;
   onHover?: (x: Comp | null) => void;
@@ -84,11 +103,56 @@ export interface TernaryPlotProps {
   className?: string;
   /** 自定义底图（fieldImage 生成），优先于 background */
   image?: string;
+  /** 透传到 <svg> 的原生事件 / 样式（工作台图 1 的拖动与选取交互） */
+  svgProps?: React.SVGProps<SVGSVGElement>;
 }
 
-export function TernaryPlot({ d, background = 'fields', boundaries = true, invariants = true, solids = true, grid = true, isoStep = 0, pad = 30, onPick, onHover, children, minHeight = 260, className, image }: TernaryPlotProps) {
+/** 三角形中各表示 xᵢ 的刻度：AB 边刻 x_B、BC 边刻 x_C、CA 边刻 x_A（MATLAB / 教材惯例） */
+function Ticks({ m, f }: { m: TriMap; f: number }) {
+  const out: ReactNode[] = [];
+  for (let k = 2; k <= 8; k += 2) {
+    const t = k / 10;
+    const ab = m.px([1 - t, t, 0]);
+    const bc = m.px([0, 1 - t, t]);
+    const ca = m.px([t, 0, 1 - t]);
+    out.push(
+      <text key={`ab${k}`} x={ab[0]} y={ab[1] + f * 1.3} className="tp-tick" textAnchor="middle">{k * 10}</text>,
+      <text key={`bc${k}`} x={bc[0] + f * 0.7} y={bc[1] + f * 0.35} className="tp-tick">{k * 10}</text>,
+      <text key={`ca${k}`} x={ca[0] - f * 0.7} y={ca[1] + f * 0.35} className="tp-tick" textAnchor="end">{k * 10}</text>,
+    );
+  }
+  return <g pointerEvents="none">{out}</g>;
+}
+
+export function TernaryPlot({
+  d,
+  background = 'fields',
+  boundaries = true,
+  invariants = true,
+  solids = true,
+  grid = true,
+  isoStep = 0,
+  isoLabels = false,
+  arrows = true,
+  fieldLabels = false,
+  alkemade = false,
+  selectedCurve = null,
+  selectedInv = null,
+  variant = 'figure',
+  pad: padProp,
+  fontPx: fontProp,
+  onPick,
+  onHover,
+  children,
+  minHeight = 260,
+  className,
+  image,
+  svgProps,
+}: TernaryPlotProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const { w, h } = useSize(wrap);
+  const f = fontProp ?? (variant === 'figure' ? Math.max(10, Math.min(13, w / 34)) : Math.max(9.5, Math.min(11.5, w / 38)));
+  const pad = padProp ?? Math.max(30, f * 2.6);
   const S = Math.max(40, Math.min(w - 2 * pad, (h - 2 * pad) / SQRT3_2));
   const ox = (w - S) / 2;
   const oy = (h + S * SQRT3_2) / 2;
@@ -150,33 +214,117 @@ export function TernaryPlot({ d, background = 'fields', boundaries = true, invar
         gridLines.push(<line key={`${i}-${k}`} x1={P[0]} y1={P[1]} x2={Q[0]} y2={Q[1]} className="tp-grid" />);
       }
     }
+  const arrowHead = (p0: [number, number], p1: [number, number], dir: 1 | -1, cls: string, back = 0) => {
+    const ang = Math.atan2(dir * (p1[1] - p0[1]), dir * (p1[0] - p0[0]));
+    const sz = f * 0.75;
+    const mx = (p0[0] + p1[0]) / 2 - Math.cos(ang) * sz * 1.25 * back;
+    const my = (p0[1] + p1[1]) / 2 - Math.sin(ang) * sz * 1.25 * back;
+    return (
+      <polygon
+        key={`${cls}-${back}`}
+        className={`tp-arrow ${cls}`}
+        transform={`translate(${mx} ${my}) rotate(${(ang * 180) / Math.PI})`}
+        points={`${sz},0 ${-sz * 0.7},${sz * 0.62} ${-sz * 0.35},0 ${-sz * 0.7},${-sz * 0.62}`}
+      />
+    );
+  };
+  const svgHandlers = onPick || onHover ? { onPointerDown: (e: React.PointerEvent) => ev(e, 'down'), onPointerMove: (e: React.PointerEvent) => ev(e, 'move'), onPointerUp: (e: React.PointerEvent) => ev(e, 'up'), onPointerLeave: () => onHover?.(null) } : {};
   return (
-    <div className={`tp ${className ?? ''}`} ref={wrap} style={{ minHeight }}>
-      <svg width={w} height={h} onPointerDown={(e) => ev(e, 'down')} onPointerMove={(e) => ev(e, 'move')} onPointerUp={(e) => ev(e, 'up')} onPointerLeave={() => onHover?.(null)} style={{ cursor: onPick ? 'crosshair' : 'default' }}>
+    <div className={`tp ${variant} ${className ?? ''}`} ref={wrap} style={{ minHeight }}>
+      <svg width={w} height={h} {...svgHandlers} style={{ cursor: onPick ? 'crosshair' : 'default' }} {...svgProps}>
         {img && <image href={img} x={ox} y={oy - S * SQRT3_2} width={S} height={S * SQRT3_2} preserveAspectRatio="none" />}
         {gridLines}
         {iso.map((seg, k) => (
           <polyline key={`iso${k}`} points={seg.pts.map((x) => m.px(x).join(',')).join(' ')} className="tp-iso" />
         ))}
+        {isoLabels &&
+          Array.from(new Set(iso.map((s) => s.T))).map((Tk) => {
+            const segs = iso.filter((s) => s.T === Tk);
+            if (segs.length < 10) return null;
+            const p = m.px(segs[Math.floor(segs.length / 2)].pts[0]);
+            return (
+              <text key={`il${Tk}`} x={p[0]} y={p[1]} className="tp-ilab" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: f * 0.78 }}>
+                {Math.round(Tk - 273.15)}
+              </text>
+            );
+          })}
+        {alkemade &&
+          (() => {
+            const seen = new Set<string>();
+            const segs: string[] = [];
+            for (const t of d.facets())
+              for (const [a, b] of [[t[0], t[1]], [t[1], t[2]], [t[0], t[2]]] as [number, number][]) {
+                const k = `${a}-${b}`;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                segs.push(`M${m.px(d.solids[a].n).join(',')}L${m.px(d.solids[b].n).join(',')}`);
+              }
+            return <path d={segs.join('')} className="tp-alk" />;
+          })()}
         {boundaries &&
-          d.topo.curves.map((cv) =>
-            cv.pieces.map((pc, k) => {
-              const lo = Math.min(pc.i0, pc.i1);
-              const hi = Math.max(pc.i0, pc.i1);
-              return <polyline key={`${cv.id}-${k}`} points={cv.pts.slice(lo, hi + 1).map((x) => m.px(x).join(',')).join(' ')} className={`tp-bd ${pc.kind === 'peritectic' ? 'per' : ''}`} />;
-            }),
-          )}
+          d.topo.curves.map((cv) => {
+            const sel = selectedCurve === cv.id;
+            return (
+              <g key={cv.id}>
+                {cv.pieces.map((pc, k) => {
+                  const lo = Math.min(pc.i0, pc.i1);
+                  const hi = Math.max(pc.i0, pc.i1);
+                  const line = cv.pts.slice(lo, hi + 1).map((x) => m.px(x).join(',')).join(' ');
+                  const km = Math.round((pc.i0 + pc.i1) / 2);
+                  const dir: 1 | -1 = pc.i1 >= pc.i0 ? 1 : -1;
+                  const k0 = Math.max(0, Math.min(cv.pts.length - 2, dir === 1 ? km : km - 1));
+                  return (
+                    <g key={k}>
+                      <polyline points={line} className={`tp-bd-halo ${sel ? 'sel' : ''}`} />
+                      <polyline points={line} className={`tp-bd ${pc.kind} ${sel ? 'sel' : ''}`} />
+                      {arrows && (
+                        <>
+                          {arrowHead(m.px(cv.pts[k0]), m.px(cv.pts[k0 + 1]), dir, pc.kind)}
+                          {pc.kind !== 'eutectic' && arrowHead(m.px(cv.pts[k0]), m.px(cv.pts[k0 + 1]), dir, pc.kind, 1)}
+                        </>
+                      )}
+                    </g>
+                  );
+                })}
+                {arrows &&
+                  cv.maxima.map((mi) => {
+                    const p = m.px(cv.pts[mi]);
+                    return <polygon key={`mx${mi}`} className="tp-max" points={`${p[0]},${p[1] - f * 0.55} ${p[0] + f * 0.5},${p[1]} ${p[0]},${p[1] + f * 0.55} ${p[0] - f * 0.5},${p[1]}`} />;
+                  })}
+              </g>
+            );
+          })}
         <polygon points={[A, B, C].map((p) => p.join(',')).join(' ')} className="tp-frame" />
-        <text x={A[0] - 6} y={A[1] + 14} className="tp-vlab" textAnchor="end">{sym[0]}</text>
-        <text x={B[0] + 6} y={B[1] + 14} className="tp-vlab">{sym[1]}</text>
-        <text x={C[0]} y={C[1] - 7} className="tp-vlab" textAnchor="middle">{sym[2]}</text>
+        <text x={A[0] - f * 0.6} y={A[1] + f * 1.15} className="tp-vlab" textAnchor="end" style={{ fill: solidColor(0), fontSize: f * 1.15 }}>{sym[0]}</text>
+        <text x={B[0] + f * 0.6} y={B[1] + f * 1.15} className="tp-vlab" style={{ fill: solidColor(1), fontSize: f * 1.15 }}>{sym[1]}</text>
+        <text x={C[0]} y={C[1] - f * 0.8} className="tp-vlab" textAnchor="middle" style={{ fill: solidColor(2), fontSize: f * 1.15 }}>{sym[2]}</text>
+        <Ticks m={m} f={f} />
+        {variant === 'figure' && (
+          <g className="tp-axis-title" pointerEvents="none">
+            <text x={(A[0] + B[0]) / 2} y={A[1] + f * 2.7} textAnchor="middle" style={{ fontSize: f * 0.85 }}>x_{sym[1]} / %</text>
+            <text x={(B[0] + C[0]) / 2 + f * 3.2} y={(B[1] + C[1]) / 2} textAnchor="middle" style={{ fontSize: f * 0.85 }} transform={`rotate(60 ${(B[0] + C[0]) / 2 + f * 3.2} ${(B[1] + C[1]) / 2})`}>x_{sym[2]} / %</text>
+            <text x={(C[0] + A[0]) / 2 - f * 3.2} y={(C[1] + A[1]) / 2} textAnchor="middle" style={{ fontSize: f * 0.85 }} transform={`rotate(-60 ${(C[0] + A[0]) / 2 - f * 3.2} ${(C[1] + A[1]) / 2})`}>x_{sym[0]} / %</text>
+          </g>
+        )}
+        {fieldLabels &&
+          d.topo.fields
+            .filter((fl) => fl.area >= 0.02)
+            .map((fl) => {
+              const p = m.px(fl.centroid);
+              return (
+                <text key={`fl${fl.si}`} x={p[0]} y={p[1]} className="tp-flab" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: f * 0.9 }}>
+                  {d.solids[fl.si].label} 初晶区
+                </text>
+              );
+            })}
         {invariants &&
           d.topo.invariants.map((iv) => {
             const p = m.px(iv.x);
+            const sel = selectedInv === iv.id;
             return (
               <g key={iv.id}>
-                <circle cx={p[0]} cy={p[1]} r={iv.rank === 'ternary' ? 3.4 : 2.6} className={`tp-inv ${iv.reaction.type}`} />
-                <text x={p[0] + 5} y={p[1] - 5} className="tp-ilab">{iv.label}</text>
+                <circle cx={p[0]} cy={p[1]} r={f * (iv.rank === 'ternary' ? 0.52 : 0.36) + (sel ? 2 : 0)} className={`tp-inv ${iv.reaction.type}`} />
+                <text x={p[0] + f * 0.95} y={p[1] - f * 0.8} className={`tp-ivlab ${iv.reaction.type}`} style={{ fontSize: f * (iv.rank === 'ternary' ? 1.05 : 0.9) }}>{iv.label}</text>
               </g>
             );
           })}
@@ -187,8 +335,8 @@ export function TernaryPlot({ d, background = 'fields', boundaries = true, invar
               const p = m.px(s.n);
               return (
                 <g key={s.id}>
-                  <rect x={p[0] - 3.5} y={p[1] - 3.5} width={7} height={7} fill={solidColor(s.index)} stroke="#1d2229" strokeWidth={0.8} />
-                  <text x={p[0] + 6} y={p[1] + 12} className="tp-ilab">{s.label}</text>
+                  <circle cx={p[0]} cy={p[1]} r={f * 0.38} fill={solidColor(s.index)} className="tp-solid" />
+                  <text x={p[0] + f} y={p[1] + f} className="tp-slab" style={{ fill: solidColor(s.index), fontSize: f }}>{s.label}</text>
                 </g>
               );
             })}
@@ -293,7 +441,7 @@ export function Arrow({ p, q, cls, head = 7 }: { p: [number, number]; q: [number
 }
 
 /** 可拖动手柄 */
-export function Handle({ m, x, onDrag, color = '#c00000', r = 6, label }: { m: TriMap; x: Comp; onDrag: (x: Comp) => void; color?: string; r?: number; label?: string }) {
+export function Handle({ m, x, onDrag, color = COLOR.stateX0, r = 6, label }: { m: TriMap; x: Comp; onDrag: (x: Comp) => void; color?: string; r?: number; label?: string }) {
   const p = m.px(x);
   const down = useRef(false);
   return (
@@ -313,7 +461,7 @@ export function Handle({ m, x, onDrag, color = '#c00000', r = 6, label }: { m: T
       onPointerUp={() => (down.current = false)}
     >
       <circle cx={p[0]} cy={p[1]} r={r + 5} fill="transparent" />
-      <circle cx={p[0]} cy={p[1]} r={r} fill="#fff" stroke={color} strokeWidth={2} />
+      <circle cx={p[0]} cy={p[1]} r={r} fill={COLOR.white} stroke={color} strokeWidth={2} />
       <circle cx={p[0]} cy={p[1]} r={2} fill={color} />
       {label && (
         <text x={p[0] + r + 3} y={p[1] - r} className="tp-hlab" fill={color}>

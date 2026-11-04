@@ -1,9 +1,11 @@
 import type { PhaseDiagram } from './diagram';
 
-/** 固相配色（与液相色相距较远，深浅背景均可辨识）。 */
-/** MATLAB 默认色序：A 橙、B 蓝、C 绿、化合物 黄 / 紫 / 青 / 暗红 */
-export const SOLID_COLORS = ['#D95319', '#0072BD', '#77AC30', '#EDB120', '#7E2F8E', '#4DBEEE', '#A2142F'];
-export const LIQUID_COLOR = '#a9c8e4';
+import { COLOR, SOLID_COLORS } from '../ui/tokens';
+
+export { SOLID_COLORS };
+/** 液相：线 / 点 / 色块用深灰；相区填充底色用浅蓝灰（令牌见 ui/tokens.ts） */
+export const LIQUID_COLOR = COLOR.phase.liquid;
+export const LIQUID_FILL = COLOR.phase.liquidFill;
 
 export type RGB = [number, number, number];
 
@@ -27,7 +29,7 @@ export function solidColor(si: number): string {
 export function phaseColor(d: PhaseDiagram, id: string): string {
   if (id === 'L') return LIQUID_COLOR;
   const s = d.solids.find((q) => q.id === id);
-  return s ? solidColor(s.index) : '#888';
+  return s ? solidColor(s.index) : COLOR.muted;
 }
 
 /** 相区填充色：固相色平均并提亮为浅色；含液相者向浅蓝灰的液相色混合，以区分"含液相"与"全固态"。 */
@@ -36,7 +38,7 @@ export function regionRgb(d: PhaseDiagram, key: string, dark = false): RGB {
   const ids = key.split('+');
   const solids = ids.filter((i) => i !== 'L').map((i) => hexToRgb(phaseColor(d, i)));
   const hasL = ids.includes('L');
-  const L = hexToRgb(LIQUID_COLOR);
+  const L = hexToRgb(LIQUID_FILL);
   const W: RGB = [255, 255, 255];
   if (!solids.length) return mixRgb(L, W, 0.62);
   let avg: RGB = [0, 0, 0];

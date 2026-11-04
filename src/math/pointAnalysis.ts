@@ -5,6 +5,7 @@ import type { BoundaryCurve, Comp, Equilibrium } from '../core/types';
 import { analyzeCurveAt, gibbsDuhemOfEq, type CurveAnalysis, type GibbsDuhem } from './curves';
 import { minimizeGibbs, planeAt, type GMinResult } from './gibbsMin';
 import { phaseFractions, type LeverResult } from './lever';
+import { phaseRule } from './phaseRule';
 import { inverse, type Mat } from './linalg';
 import { liquidusGradient, parametrize } from './spaces';
 
@@ -70,7 +71,10 @@ export interface PointAnalysis {
   kind: RegionKind;
   phases: PhaseRow[];
   P: number;
+  /** 有效组元数（见 phaseRule） */
+  C: number;
   F: number;
+  ruleNote: string;
   Tliq: number;
   liqSi: number;
   lever: LeverResult;
@@ -238,6 +242,8 @@ export function analyzePoint(d: PhaseDiagram, x0: Comp, T: number, eq: Equilibri
   }
   const certificate = Math.min(...forces.map((f) => f.r).filter(Number.isFinite));
 
+  const rule = phaseRule(d, eq, x0);
+
   return {
     x0,
     T,
@@ -245,7 +251,9 @@ export function analyzePoint(d: PhaseDiagram, x0: Comp, T: number, eq: Equilibri
     kind,
     phases,
     P: phases.length,
-    F: 4 - phases.length,
+    F: rule.F,
+    C: rule.C,
+    ruleNote: rule.reason,
     Tliq: liq.T,
     liqSi: liq.si,
     lever,
