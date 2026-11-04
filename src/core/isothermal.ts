@@ -23,6 +23,8 @@ export interface IsoArc {
   /** 弧两端的邻接固相（-1 表示到达成分三角形边界） */
   startNb: number;
   endNb: number;
+  /** 凸包近似（延拓失败的回退），界面以虚线标出 */
+  approx?: boolean;
 }
 
 export interface IsoSection {
@@ -32,6 +34,8 @@ export interface IsoSection {
   ties: [Comp, Comp][];
   /** 三相连结三角形的液相顶点 */
   invariantPts: { x: Comp; solids: [number, number] }[];
+  /** 固溶体体系：单相色块与相界之间的衬底描边宽度（成分单位），用于消除凸包小块的台阶边缘 */
+  stripW?: number;
 }
 
 const NA = 240; // 均匀角度采样数

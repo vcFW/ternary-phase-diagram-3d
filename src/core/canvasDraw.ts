@@ -169,7 +169,30 @@ export function drawIso(
   ctx.fillStyle = regionCss(d, 'L', 1, th.dark);
   ctx.fillRect(0, 0, W, H);
   const order = { solid: 0, two: 1, three: 2 } as const;
-  const regs = [...sec.regions].sort((a, b) => order[a.kind] - order[b.kind]);
+  // 精确追踪的两相区（非 fine）在凸包小块之上绘制：先画 fine 小块，再画精确多边形
+  const regs = [...sec.regions].sort((a, b) => order[a.kind] + (a.fine ? 0 : 0.5) - (order[b.kind] + (b.fine ? 0 : 0.5)));
+  // 衬底描边：沿精确相界、以单相区颜色描一条宽带，补上凸包小块与真实相界之间的缝隙（随后被两相区多边形盖住内侧一半）
+  if (sec.stripW) {
+    const pa = L.px([1, 0, 0]);
+    const pb = L.px([0, 1, 0]);
+    ctx.lineWidth = Math.hypot(pa[0] - pb[0], pa[1] - pb[1]) * sec.stripW;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    for (const a of sec.arcs) {
+      if (a.approx) continue;
+      const si = a.si;
+      ctx.strokeStyle = regionCss(d, si < 0 ? 'L' : d.solids[si].id, 1, th.dark);
+      ctx.beginPath();
+      a.pts.forEach((x, i) => {
+        const p = L.px(x);
+        if (i) ctx.lineTo(p[0], p[1]);
+        else ctx.moveTo(p[0], p[1]);
+      });
+      ctx.stroke();
+    }
+    ctx.lineJoin = 'miter';
+    ctx.lineCap = 'butt';
+  }
   for (const r of regs) {
     const pts = r.poly.map((x) => L.px(x));
     polyPath(ctx, pts);
@@ -209,6 +232,7 @@ export function drawIso(
   ctx.strokeStyle = COLOR.black;
   ctx.lineWidth = Math.max(1.4, opts.fontPx / 7);
   for (const a of sec.arcs) {
+    ctx.setLineDash(a.approx ? [4, 3] : []);
     ctx.beginPath();
     a.pts.forEach((x, i) => {
       const p = L.px(x);
@@ -217,6 +241,7 @@ export function drawIso(
     });
     ctx.stroke();
   }
+  ctx.setLineDash([]);
   ctx.restore();
   drawTriangleFrame(ctx, L, d, th, { grid: opts.grid, ticks: opts.ticks, fontPx: opts.fontPx });
   drawSolidPoints(ctx, L, d, th, opts.fontPx);
@@ -345,21 +370,16 @@ export function drawVertical(
     const c2 = cv.getContext('2d')!;
     const img = c2.createImageData(ras.W, ras.H);
     const cols: RGB[] = ras.keys.map((k) => regionRgb(d, k, th.dark));
-    const bd = th.dark ? 255 : 20;
     const liqA = opts.liquidAlpha ?? 255;
     for (let j = 0; j < ras.H; j++) {
       for (let i = 0; i < ras.W; i++) {
         const id = ras.labels[j * ras.W + i];
-        let edge = false;
-        if (i + 1 < ras.W && ras.labels[j * ras.W + i + 1] !== id) edge = true;
-        if (j + 1 < ras.H && ras.labels[(j + 1) * ras.W + i] !== id) edge = true;
         const k = (j * ras.W + i) * 4;
-        let c = cols[id];
-        if (edge) c = mixRgb(c, [bd, bd, bd], 0.55);
+        const c = cols[id];
         img.data[k] = c[0];
         img.data[k + 1] = c[1];
         img.data[k + 2] = c[2];
-        img.data[k + 3] = id === 0 && !edge ? liqA : 255;
+        img.data[k + 3] = id === 0 ? liqA : 255;
       }
     }
     c2.putImageData(img, 0, 0);
@@ -368,6 +388,25 @@ export function drawVertical(
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(cv, lay.x, lay.y, lay.w, lay.h);
   const f = opts.fontPx;
+  // 相界：由逐行交点按连续性连成的折线（光滑，不呈栅格台阶）
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(lay.x, lay.y, lay.w, lay.h);
+  ctx.clip();
+  ctx.strokeStyle = th.dark ? 'rgba(255,255,255,0.7)' : 'rgba(20,20,20,0.7)';
+  ctx.lineWidth = Math.max(1, f / 9);
+  ctx.lineJoin = 'round';
+  for (const b of ras.boundaries) {
+    ctx.beginPath();
+    b.pts.forEach(([u, Tk], i) => {
+      const X = lay.uToX(u);
+      const Y = lay.TToY(Tk);
+      if (i) ctx.lineTo(X, Y);
+      else ctx.moveTo(X, Y);
+    });
+    ctx.stroke();
+  }
+  ctx.restore();
   // 液相线（沿截面）
   ctx.strokeStyle = COLOR.black;
   ctx.lineWidth = Math.max(1.5, f / 6);

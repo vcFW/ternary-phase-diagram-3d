@@ -74,7 +74,8 @@ export function isoOf(d: PhaseDiagram, T: number): { sec: IsoSection | null; sta
 
 /** 垂直截面栅格：固溶体体系异步（W/4 × H/4 → 全分辨率） */
 export function verticalOf(d: PhaseDiagram, spec: VerticalSpec, W: number, H: number, Tmin: number, Tmax: number): { ras: VerticalRaster | null; stale: boolean } {
-  const lo = (): [number, number] => [Math.max(40, W >> 2), Math.max(30, H >> 2)];
+  // 固溶体体系的栅格行数：先 40 行，再 120 行（列数 = 像素宽度）；相界由折线绘制，行数无需等于像素高度
+  const lo = (): [number, number] => [Math.max(40, W >> 2), 40];
   if (!useWorkerFor(d.params)) {
     const [w, h] = lo();
     // 同步路径沿用原有的"先粗后精"由调用方（VerticalView）负责
@@ -85,7 +86,7 @@ export function verticalOf(d: PhaseDiagram, spec: VerticalSpec, W: number, H: nu
   const [w, h] = lo();
   const r = progressive<VerticalRaster>('vert', `vert|${d.uid}|${W}x${H}`, [
     [`${base}|${w}x${h}`, () => call(d.params, 'vertical', spec, w, h, Tmin, Tmax)],
-    [`${base}|${W}x${H}`, () => call(d.params, 'vertical', spec, W, H, Tmin, Tmax)],
+    [`${base}|${W}x120`, () => call(d.params, 'vertical', spec, W, 120, Tmin, Tmax)],
   ]);
   return { ras: r.value, stale: r.stale };
 }
