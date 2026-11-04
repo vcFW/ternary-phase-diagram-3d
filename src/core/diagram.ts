@@ -45,7 +45,7 @@ export class PhaseDiagram {
     this.solids = this.th.solids;
     this.sol = this.th.hasSolution ? new SolutionEngine(this.th) : null;
     this.liqGridPre = pre?.liqGrid ?? null;
-    this.topo = pre?.topo ?? extractTopology(this.th, this.sol ? Math.min(gridN, 110) : gridN);
+    this.topo = pre?.topo ?? extractTopology(this.th, this.sol ? Math.min(gridN, 120) : gridN);
     const ns = this.solids.length;
     for (let a = 0; a < ns; a++)
       for (let b = a + 1; b < ns; b++)

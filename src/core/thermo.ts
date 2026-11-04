@@ -252,7 +252,8 @@ export class Thermo {
       const done = Math.abs(Tn - T) < 1e-9 * Tn;
       T = Tn;
       if (done) break;
-      y = argmaxY(sol, this.muLiq(x, T), T, y);
+      // 包络定理：y 的误差只以平方进入 T，中间迭代无需 1e-14 精度
+      y = argmaxY(sol, this.muLiq(x, T), T, y, 1e-10);
     }
     return T;
   }
@@ -344,7 +345,7 @@ export function regMu(p: RegSolParams, y: Comp, T: number): Comp {
  * max_y [μ·y − G(y,T)]：驻点条件 °Gᵢ + RT ln yᵢ + μᵢᴱˣ(y) = μᵢ + λ ⇒ yᵢ ∝ exp((μᵢ − °Gᵢ − μᵢᴱˣ(y))/RT)。
  * 阻尼不动点迭代；从给定初值与理想解两个起点出发，取目标值较大者（Ω 较大时可能有多个驻点）。
  */
-export function argmaxY(p: RegSolParams, mu: Comp, T: number, y0: Comp): Comp {
+export function argmaxY(p: RegSolParams, mu: Comp, T: number, y0: Comp, tol = 1e-14): Comp {
   const RT = R * T;
   const run = (start: Comp, ideal: boolean): Comp => {
     let y: Comp = [...start] as Comp;
@@ -365,7 +366,7 @@ export function argmaxY(p: RegSolParams, mu: Comp, T: number, y0: Comp): Comp {
       const d = Math.abs(ny[0] - y[0]) + Math.abs(ny[1] - y[1]) + Math.abs(ny[2] - y[2]);
       const damp = it < 3 ? 1 : 0.6;
       y = [y[0] + damp * (ny[0] - y[0]), y[1] + damp * (ny[1] - y[1]), y[2] + damp * (ny[2] - y[2])];
-      if (d < 1e-14) break;
+      if (d < tol) break;
     }
     return y;
   };
