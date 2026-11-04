@@ -9,3 +9,5 @@ demo/segments
 __pycache__
 *.tsbuildinfo
 demo/*.mp4
+test-results
+playwright-report
