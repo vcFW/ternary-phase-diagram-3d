@@ -51,29 +51,79 @@
 .tp-frame {
   fill: none;
   stroke: var(--text);
-  stroke-width: 1.2;
+  stroke-width: var(--lw-boundary);
 }
 .tp-grid {
-  stroke: rgba(0, 0, 0, 0.09);
-  stroke-width: 0.7;
+  stroke: rgba(0, 0, 0, 0.13);
+  stroke-width: var(--lw-axis);
 }
 .tp-iso {
   fill: none;
   stroke: rgba(29, 34, 41, 0.35);
   stroke-width: 0.6;
 }
+.tp-tick {
+  font-family: var(--axes-font);
+  font-size: var(--fs-xs);
+  fill: var(--dim);
+}
+.tp-axis-title text {
+  font-family: var(--axes-font);
+  fill: var(--dim);
+}
+/* 界线：白色光晕 + 按反应类型着色（共晶 / 过渡型转熔 / 包晶型转熔），与 core/colors 令牌一致 */
+.tp-bd-halo {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 4.4;
+  stroke-linejoin: round;
+}
+.tp-bd-halo.sel {
+  stroke-width: 6;
+}
 .tp-bd {
   fill: none;
-  stroke: var(--text);
-  stroke-width: 1.3;
+  stroke: var(--c-ln-e);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
 }
-.tp-bd.per {
-  stroke: var(--danger);
+.tp-bd.transition {
+  stroke: var(--c-ln-u);
+}
+.tp-bd.peritectic {
+  stroke: var(--c-ln-p);
+}
+.tp-bd.sel {
+  stroke-width: 3.4;
+}
+.tp-arrow {
+  fill: var(--c-ln-e);
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 1;
+}
+.tp-arrow.transition {
+  fill: var(--c-ln-u);
+}
+.tp-arrow.peritectic {
+  fill: var(--c-ln-p);
+}
+.tp-max {
+  fill: var(--c-comp-3);
+  stroke: var(--text);
+  stroke-width: 1;
+}
+.tp-alk {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 1.3;
+  stroke-dasharray: 6 4;
 }
 .tp-vlab {
   font-weight: 600;
-  font-size: var(--fs-md);
   fill: var(--text);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
 }
 .tp-ilab {
   font-size: var(--fs-xs);
@@ -81,6 +131,32 @@
   paint-order: stroke;
   stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 2.5px;
+}
+.tp-flab {
+  font-weight: 600;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+}
+.tp-ivlab {
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+  fill: var(--c-pt-e);
+}
+.tp-ivlab.transition {
+  fill: var(--c-pt-u);
+}
+.tp-ivlab.peritectic {
+  fill: var(--c-pt-p);
+}
+.tp-slab {
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
 }
 .tp-hlab {
   font-size: var(--fs-xs);
@@ -90,15 +166,28 @@
   stroke-width: 3px;
 }
 .tp-inv {
-  stroke: var(--text);
-  stroke-width: 0.8;
-  fill: var(--accent);
+  stroke: var(--white);
+  stroke-width: 1.5;
+  fill: var(--c-pt-e);
 }
 .tp-inv.transition {
-  fill: var(--warn);
+  fill: var(--c-pt-u);
 }
 .tp-inv.peritectic {
-  fill: var(--c-path);
+  fill: var(--c-pt-p);
+}
+.tp-solid {
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 2;
+}
+.f2-tp {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+.f2-tp svg {
+  position: absolute;
+  inset: 0;
 }
 .arrow line {
   stroke: currentColor;

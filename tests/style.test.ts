@@ -51,4 +51,9 @@ describe('设计令牌', () => {
     }
     expect(bad).toEqual([]);
   });
+
+  it('canvasDraw.ts 只保留填充底图：行数较旧版（844 行）减少 ≥ 50%', () => {
+    const n = readFileSync('src/core/canvasDraw.ts', 'utf8').split('\n').length;
+    expect(n).toBeLessThanOrEqual(422);
+  });
 });

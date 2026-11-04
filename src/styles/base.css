@@ -1100,3 +1100,7 @@ input {
 .helptip:focus .helptip-body {
   display: block;
 }
+.vp-legend-pop {
+  padding: 8px 10px;
+  font-size: var(--fs-sm);
+}

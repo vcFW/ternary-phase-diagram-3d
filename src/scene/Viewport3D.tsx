@@ -5,6 +5,7 @@ import type { PhaseDiagram } from '../core/diagram';
 import { LayersCard } from '../panels/Sidebar';
 import { useStore } from '../state/store';
 import { Drop } from '../ui/controls';
+import { useSize } from '../ui/useSize';
 import { TERMS } from '../core/terms';
 import { COLOR } from '../ui/tokens';
 import { PhaseScene, type HoverInfo } from './PhaseScene';
@@ -42,6 +43,10 @@ function IconBtn({ title, d, on, disabled, onClick }: { title: string; d: string
 
 export function Viewport3D() {
   const host = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // 图窗较窄（< 520 px）时图例收进工具条的下拉面板，把宽度还给三维场景
+  const { w: vw } = useSize(rootRef);
+  const narrow = vw > 0 && vw < 520;
   const scene = useRef<PhaseScene | null>(null);
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const d = useStore((s) => s.diagram);
@@ -113,27 +118,8 @@ export function Viewport3D() {
     return null;
   })();
 
-  return (
-    <div className="viewport">
-      <div className="vp-host" ref={host} />
-      <div className="vp-toolbar" role="toolbar" aria-label="三维视图工具">
-        <IconBtn title="默认视角（等轴测）" onClick={() => scene.current?.setView('iso')} d="M8 2 14 5.5v5L8 14 2 10.5v-5z M8 2v6 M2 5.5 8 8l6-2.5" />
-        <IconBtn title="俯视（即液相面投影）" onClick={() => scene.current?.setView('top')} d="M2 3h12v10H2z M2 8h12 M8 3v10" />
-        <IconBtn title="正视" onClick={() => scene.current?.setView('front')} d="M3 4h10v8H3z" />
-        <IconBtn title="侧视" onClick={() => scene.current?.setView('side')} d="M5 3h6v10H5z" />
-        <IconBtn title="正对截面（视线垂直于垂直截面）" disabled={!vertOn} onClick={() => scene.current?.setView('section')} d="M3 13 6 3h7l-3 10z" />
-        <span className="sep" />
-        <IconBtn title="等温面（可拖动升降温度）" on={isoOn} onClick={() => setIsoOn(!isoOn)} d="M2 10 8 13l6-3-6-3z M2 7l6 3 6-3" />
-        <IconBtn title="垂直截面平面" on={vertOn} onClick={() => setVertOn(!vertOn)} d="M5 2h6v12H5z M8 2v12" />
-        <IconBtn title="剖切：隐藏等温面以上的液相面，直接看到等温截面与其下的相图" on={cutaway} onClick={() => setLayers({ cutaway: !cutaway })} d="M2 13 14 3 M3 3l4 4 M3 13l4-4" />
-        <span className="sep" />
-        <Drop className="vp-ib" panelClass="vp-drop-panel" title="三维图层" label={<Icon d="M8 2 14 5 8 8 2 5z M2 8l6 3 6-3 M2 11l6 3 6-3" />}>
-          <LayersCard />
-        </Drop>
-        <IconBtn title="导出当前三维视图为 PNG" onClick={snap} d="M2 5h3l1-2h4l1 2h3v8H2z M8 6.5a2.2 2.2 0 1 0 .01 0" />
-      </div>
-      <div className="vp-tbadge mono" title="当前等温面温度（在顶栏修改；可拖动三维中的蓝色球 / 水平面）">T = {cel(T)}</div>
-      <div className="vp-legend">
+  const legendBody = (
+    <>
         {surfaceColor === 'temperature' ? (
           <>
             <div className="lg-title">液相面温度 T / °C</div>
@@ -158,7 +144,35 @@ export function Viewport3D() {
         {markLegend.map((m) => (
           <div key={m.text} className="lg-row"><i className={m.dot ? 'dot' : 'ln'} style={{ background: m.color }} /><span>{m.text}</span></div>
         ))}
+    </>
+  );
+
+  return (
+    <div className="viewport" ref={rootRef} style={{ ['--vp-legend-w' as string]: narrow ? '0px' : '156px' } as React.CSSProperties}>
+      <div className="vp-host" ref={host} />
+      <div className="vp-toolbar" role="toolbar" aria-label="三维视图工具">
+        <IconBtn title="默认视角（等轴测）" onClick={() => scene.current?.setView('iso')} d="M8 2 14 5.5v5L8 14 2 10.5v-5z M8 2v6 M2 5.5 8 8l6-2.5" />
+        <IconBtn title="俯视（即液相面投影）" onClick={() => scene.current?.setView('top')} d="M2 3h12v10H2z M2 8h12 M8 3v10" />
+        <IconBtn title="正视" onClick={() => scene.current?.setView('front')} d="M3 4h10v8H3z" />
+        <IconBtn title="侧视" onClick={() => scene.current?.setView('side')} d="M5 3h6v10H5z" />
+        <IconBtn title="正对截面（视线垂直于垂直截面）" disabled={!vertOn} onClick={() => scene.current?.setView('section')} d="M3 13 6 3h7l-3 10z" />
+        <span className="sep" />
+        <IconBtn title="等温面（可拖动升降温度）" on={isoOn} onClick={() => setIsoOn(!isoOn)} d="M2 10 8 13l6-3-6-3z M2 7l6 3 6-3" />
+        <IconBtn title="垂直截面平面" on={vertOn} onClick={() => setVertOn(!vertOn)} d="M5 2h6v12H5z M8 2v12" />
+        <IconBtn title="剖切：隐藏等温面以上的液相面，直接看到等温截面与其下的相图" on={cutaway} onClick={() => setLayers({ cutaway: !cutaway })} d="M2 13 14 3 M3 3l4 4 M3 13l4-4" />
+        <span className="sep" />
+        <Drop className="vp-ib" panelClass="vp-drop-panel" title="三维图层" label={<Icon d="M8 2 14 5 8 8 2 5z M2 8l6 3 6-3 M2 11l6 3 6-3" />}>
+          <LayersCard />
+        </Drop>
+        {narrow && (
+          <Drop className="vp-ib" panelClass="vp-drop-panel legend" title="图例" label={<Icon d="M3 4h2 M7 4h6 M3 8h2 M7 8h6 M3 12h2 M7 12h6" />}>
+            <div className="vp-legend-pop">{legendBody}</div>
+          </Drop>
+        )}
+        <IconBtn title="导出当前三维视图为 PNG" onClick={snap} d="M2 5h3l1-2h4l1 2h3v8H2z M8 6.5a2.2 2.2 0 1 0 .01 0" />
       </div>
+      <div className="vp-tbadge mono" title="当前等温面温度（在顶栏修改；可拖动三维中的蓝色球 / 水平面）">T = {cel(T)}</div>
+      {!narrow && <div className="vp-legend">{legendBody}</div>}
       {selText && (
         <div className="vp-sel">
           <b>{selText.title}</b>

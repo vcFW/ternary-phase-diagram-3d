@@ -105,6 +105,12 @@ const SEMANTIC: Record<string, string> = {
   'c-comp-c': COLOR.component[2],
   'c-comp-3': COLOR.compound[0],
   'c-comp-6': COLOR.compound[3],
+  'c-ln-e': COLOR.line.eutectic,
+  'c-ln-u': COLOR.line.transition,
+  'c-ln-p': COLOR.line.peritectic,
+  'c-pt-e': COLOR.point.eutectic,
+  'c-pt-u': COLOR.point.transition,
+  'c-pt-p': COLOR.point.peritectic,
 };
 
 /** 其余样式用色：按色相类 + 明度（L%）命名的色阶 */

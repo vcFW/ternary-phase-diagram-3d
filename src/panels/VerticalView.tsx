@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { drawVertical, haloText, THEME_LIGHT, vLayout, type VLayout } from '../core/canvasDraw';
+import { haloText, THEME_LIGHT } from '../core/canvasDraw';
+import { drawVertical, vLayout, type VLayout } from '../core/verticalDraw';
 import { cel, regionName, toC } from '../core/colors';
 import { endLabel } from '../core/sections';
 import { lerpComp, type VerticalRaster } from '../core/vertical';

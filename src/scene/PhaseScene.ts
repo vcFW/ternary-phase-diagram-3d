@@ -5,7 +5,9 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { SQRT3_2, toXY } from '../core/barycentric';
-import { drawIso, drawVertical, THEME_LIGHT, triLayout } from '../core/canvasDraw';
+import { THEME_LIGHT, triLayout } from '../core/canvasDraw';
+import { drawIsoTexture } from '../core/isoTexture';
+import { drawVertical } from '../core/verticalDraw';
 import { colormap } from '../core/colormap';
 import { cel, hexToRgb, phaseColor, regionRgb, SOLID_COLORS, solidColor, toC } from '../core/colors';
 import { LIQ_GRID_N, type PhaseDiagram } from '../core/diagram';
@@ -835,7 +837,7 @@ export class PhaseScene {
       const ctx = this.isoCanvas.getContext('2d')!;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, 768, 768);
-      drawIso(ctx, 768, 768, sec, s.diagram, THEME_LIGHT, { pad: 56, grid: true, ticks: false, labels: true, ties: true, fontPx: 22 });
+      drawIsoTexture(ctx, 768, 768, sec, s.diagram, THEME_LIGHT, { pad: 56, grid: true, ticks: false, labels: true, ties: true, fontPx: 22 });
       this.isoTex.needsUpdate = true;
     }
     if (this.tLabel) {

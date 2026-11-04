@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { drawIso, drawProjection, THEME_LIGHT, triLayout, type TriLayout } from '../../core/canvasDraw';
+import { fillIso, fillProjection, THEME_LIGHT, triLayout, type TriLayout } from '../../core/canvasDraw';
 import { cel, phaseColor, solidColor } from '../../core/colors';
 import { isoOf } from '../../state/asyncCompute';
 import type { Comp, Equilibrium } from '../../core/types';
@@ -7,6 +7,8 @@ import { analyzeCurveAt } from '../../math/curves';
 import { curveAtPoint, type PointAnalysis } from '../../math/pointAnalysis';
 import { parametrize } from '../../math/spaces';
 import { useStore } from '../../state/store';
+import { IsoOverlay } from '../../viz/IsoOverlay';
+import { TernaryPlot } from '../../viz/TernaryPlot';
 import { useSize } from '../../ui/useSize';
 import { COLOR } from '../../ui/tokens';
 
@@ -55,19 +57,11 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
     const ctx = c.getContext('2d')!;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
-    if (view === 'iso' && sec) drawIso(ctx, w, h, sec, d, THEME_LIGHT, { pad, grid: true, ticks: true, labels: true, ties: true, fontPx });
-    else
-      drawProjection(ctx, w, h, d, THEME_LIGHT, { pad, fontPx, isoStep: 50, isotherms: true, boundaries: true, arrows: true, invariants: true, alkemade: !d.sol, fillMode: 'field', dpr }, {
-        x0,
-        spec: null,
-        trace: null,
-        idx: 0,
-        selectedCurve: selCurve,
-        selectedInv: selInv,
-        noState: true,
-      });
-    // 底图不画 x₀（由 SVG 叠加层绘制），因此拖动 x₀ 时无需重绘
-  }, [view, sec, d, w, h, dpr, pad, fontPx, selCurve, selInv]); // eslint-disable-line react-hooks/exhaustive-deps
+    // 画布只负责区域填充 / 液相面着色；坐标轴、相界、标注、叠加层全部由 TernaryPlot（SVG）绘制
+    if (view === 'iso' && sec) fillIso(ctx, w, h, sec, d, THEME_LIGHT, pad);
+    else fillProjection(ctx, w, h, d, THEME_LIGHT, { pad, fillMode: 'field', dpr });
+    // 底图不含 x₀（由 SVG 叠加层绘制），因此拖动 x₀ 时无需重绘
+  }, [view, sec, d, w, h, dpr, pad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------------------------------------------------------------- 交互
   const drag = useRef(false);
@@ -273,46 +267,70 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
   return (
     <div className="f2" ref={wrap}>
       <canvas ref={cv} style={{ width: w, height: h }} />
-      <svg width={w} height={h} className="f2-svg" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = false)} onPointerLeave={() => setTip(null)} style={{ cursor: mode === 'composition' ? 'crosshair' : 'default' }}>
-        <defs>
-          {[...new Set([COLOR.stateX0, COLOR.accent, COLOR.component[2], COLOR.component[0], COLOR.muted, COLOR.compound[1], COLOR.compound[2], COLOR.phase.liquid, COLOR.component[1]])].map((c) => (
-            <marker key={c} id={`ah${c.slice(1)}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill={c} />
-            </marker>
-          ))}
-        </defs>
-        {overlays}
-        {liqMark && (
-          <g>
-            <circle cx={liqMark[0]} cy={liqMark[1]} r={6} fill={LIQ} stroke={COLOR.white} strokeWidth={1.5} />
-            <text x={liqMark[0] + 8} y={liqMark[1] + 14} className="f2-lab" fill={LIQ}>
-              x_L
-            </text>
-          </g>
+      <TernaryPlot
+        d={d}
+        variant="figure"
+        className="f2-tp"
+        background="none"
+        minHeight={0}
+        pad={pad}
+        fontPx={fontPx}
+        grid
+        boundaries={view === 'proj'}
+        arrows={view === 'proj'}
+        invariants={view === 'proj'}
+        isoStep={view === 'proj' ? 50 : 0}
+        isoLabels={view === 'proj'}
+        fieldLabels={view === 'proj'}
+        alkemade={view === 'proj' && !d.sol}
+        selectedCurve={selCurve}
+        selectedInv={selInv}
+        svgProps={{ className: 'f2-svg', onPointerDown: onDown, onPointerMove: onMove, onPointerUp: () => (drag.current = false), onPointerLeave: () => setTip(null), style: { cursor: mode === 'composition' ? 'crosshair' : 'default' } }}
+      >
+        {(m) => (
+          <>
+            <defs>
+              {[...new Set([COLOR.stateX0, COLOR.accent, COLOR.component[2], COLOR.component[0], COLOR.muted, COLOR.compound[1], COLOR.compound[2], COLOR.phase.liquid, COLOR.component[1]])].map((c) => (
+                <marker key={c} id={`ah${c.slice(1)}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill={c} />
+                </marker>
+              ))}
+            </defs>
+            {view === 'iso' && sec && <IsoOverlay sec={sec} d={d} m={m} fontPx={fontPx} />}
+            {overlays}
+            {liqMark && (
+              <g>
+                <circle cx={liqMark[0]} cy={liqMark[1]} r={6} fill={LIQ} stroke={COLOR.white} strokeWidth={1.5} />
+                <text x={liqMark[0] + 8} y={liqMark[1] + 14} className="f2-lab" fill={LIQ}>
+                  x_L
+                </text>
+              </g>
+            )}
+            <g>
+              <circle cx={p0[0]} cy={p0[1]} r={7.5} fill="none" stroke={X0C} strokeWidth={2} />
+              <line x1={p0[0] - 12} y1={p0[1]} x2={p0[0] + 12} y2={p0[1]} stroke={X0C} strokeWidth={1.2} />
+              <line x1={p0[0]} y1={p0[1] - 12} x2={p0[0]} y2={p0[1] + 12} stroke={X0C} strokeWidth={1.2} />
+              <text x={p0[0] + 10} y={p0[1] - 10} className="f2-lab" fill={X0C}>
+                x₀{mode === 'cooling' ? '（固定）' : ''}
+              </text>
+            </g>
+            {tip && (
+              <g transform={`translate(${Math.min(w - 170, tip.X + 14)} ${Math.min(h - 62, tip.Y + 14)})`} pointerEvents="none">
+                <rect width={160} height={52} className="f2-tip" />
+                <text x={6} y={14} className="f2-tiptxt">
+                  {sym.map((s2, i) => `${s2} ${(tip.x[i] * 100).toFixed(1)}`).join('  ')}
+                </text>
+                <text x={6} y={29} className="f2-tiptxt">
+                  {view === 'iso' ? `T = ${cel(T, 1)}：${tip.key}` : `液相线 ${cel(tip.Tl, 1)}`}
+                </text>
+                <text x={6} y={44} className="f2-tiptxt dim">
+                  {view === 'iso' ? `液相线 ${cel(tip.Tl, 1)}` : `当前 T：${tip.key}`}
+                </text>
+              </g>
+            )}
+          </>
         )}
-        <g>
-          <circle cx={p0[0]} cy={p0[1]} r={7.5} fill="none" stroke={X0C} strokeWidth={2} />
-          <line x1={p0[0] - 12} y1={p0[1]} x2={p0[0] + 12} y2={p0[1]} stroke={X0C} strokeWidth={1.2} />
-          <line x1={p0[0]} y1={p0[1] - 12} x2={p0[0]} y2={p0[1] + 12} stroke={X0C} strokeWidth={1.2} />
-          <text x={p0[0] + 10} y={p0[1] - 10} className="f2-lab" fill={X0C}>
-            x₀{mode === 'cooling' ? '（固定）' : ''}
-          </text>
-        </g>
-        {tip && (
-          <g transform={`translate(${Math.min(w - 170, tip.X + 14)} ${Math.min(h - 62, tip.Y + 14)})`} pointerEvents="none">
-            <rect width={160} height={52} className="f2-tip" />
-            <text x={6} y={14} className="f2-tiptxt">
-              {sym.map((s2, i) => `${s2} ${(tip.x[i] * 100).toFixed(1)}`).join('  ')}
-            </text>
-            <text x={6} y={29} className="f2-tiptxt">
-              {view === 'iso' ? `T = ${cel(T, 1)}：${tip.key}` : `液相线 ${cel(tip.Tl, 1)}`}
-            </text>
-            <text x={6} y={44} className="f2-tiptxt dim">
-              {view === 'iso' ? `液相线 ${cel(tip.Tl, 1)}` : `当前 T：${tip.key}`}
-            </text>
-          </g>
-        )}
-      </svg>
+      </TernaryPlot>
     </div>
   );
 }
