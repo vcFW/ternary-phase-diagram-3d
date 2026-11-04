@@ -8,14 +8,17 @@ import { SQRT3_2, toXY } from '../core/barycentric';
 import { drawIso, drawVertical, THEME_LIGHT, triLayout } from '../core/canvasDraw';
 import { colormap } from '../core/colormap';
 import { cel, hexToRgb, phaseColor, regionRgb, SOLID_COLORS, solidColor, toC } from '../core/colors';
-import type { PhaseDiagram } from '../core/diagram';
-import { isothermal } from '../core/isothermal';
-import { computeIso, computeVertical, nearestOnPerimeter, perimeterLine, resolveSection, type SectionConfig } from '../core/sections';
+import { LIQ_GRID_N, type PhaseDiagram } from '../core/diagram';
+import { nearestOnPerimeter, perimeterLine, resolveSection, type SectionConfig } from '../core/sections';
 import type { Trace } from '../core/cooling';
 import type { Comp, Equilibrium } from '../core/types';
 import { lerpComp, type VerticalSpec } from '../core/vertical';
 import type { Layers, Selection } from '../state/store';
 import { COLOR, hexNum, SCENE } from '../ui/tokens';
+import { useWorkerFor } from '../compute/client';
+import { isoOf, regionSlicesOf, verticalOf } from '../state/asyncCompute';
+import type { IsoSection } from '../core/isothermal';
+import type { VerticalRaster } from '../core/vertical';
 
 /** 世界坐标：成分三角形位于 XZ 平面（A 左前、B 右前、C 后），温度映射到 Y。 */
 const HEIGHT0 = 1.12;
@@ -177,11 +180,12 @@ export class PhaseScene {
   private isoMesh: THREE.Mesh | null = null;
   private isoTex: THREE.CanvasTexture | null = null;
   private isoCanvas = document.createElement('canvas');
-  private isoKey = '';
+  private isoSec: IsoSection | null = null;
   private vMesh: THREE.Mesh | null = null;
   private vTex: THREE.CanvasTexture | null = null;
   private vCanvas = document.createElement('canvas');
   private vKey = '';
+  private vRas: VerticalRaster | null = null;
   private vTimer = 0;
   private handles: Handle[] = [];
   private tLabel: CSS2DObject | null = null;
@@ -415,7 +419,8 @@ export class PhaseScene {
     this.buildCompounds(G('compounds'));
     this.resetRegion();
     this.vKey = '';
-    this.isoKey = '';
+    this.vRas = null;
+    this.isoSec = null;
     this.dirty = true;
     // 相机目标高度
     this.controls.target.set(0, this.H * 0.45, 0);
@@ -510,7 +515,6 @@ export class PhaseScene {
 
   private buildBinaryFaces(g: THREE.Group) {
     const d = this.d!;
-    const th = d.th;
     const edges: [number, number][] = [
       [0, 1],
       [1, 2],
@@ -528,7 +532,7 @@ export class PhaseScene {
         const x: Comp = [0, 0, 0];
         x[i] = 1 - t;
         x[j] = t;
-        const q = th.liquidus(x);
+        const q = d.liquidusFast(x);
         const c = new THREE.Color(solidColor(q.si));
         const top = this.W(x, Math.max(this.range.Tmin, q.T));
         const bot = this.W(x, this.range.Tmin);
@@ -563,8 +567,7 @@ export class PhaseScene {
 
   private buildLiquidus(g: THREE.Group) {
     const d = this.d!;
-    const th = d.th;
-    const N = 120;
+    const N = LIQ_GRID_N;
     const rowStart: number[] = [];
     let nv = 0;
     for (let i = 0; i <= N; i++) {
@@ -574,14 +577,14 @@ export class PhaseScene {
     const pos = new Float32Array(nv * 3);
     const tA = new Float32Array(nv * 4);
     const tB = new Float32Array(nv * 4);
-    const ns = d.ns;
+    const grid = d.liquidusGrid();
     for (let i = 0; i <= N; i++) {
       for (let j = 0; j <= N - i; j++) {
         const v = rowStart[i] + j;
         const x: Comp = [i / N, j / N, (N - i - j) / N];
         let best = 0;
         for (let s = 0; s < 8; s++) {
-          const t = s < ns ? th.Tsat(s, x) : 0;
+          const t = grid[v * 8 + s];
           if (s < 4) tA[v * 4 + s] = t;
           else tB[v * 4 + s - 4] = t;
           if (t > best) best = t;
@@ -826,10 +829,9 @@ export class PhaseScene {
     if (!this.isoMesh || !this.isoTex) return;
     this.isoMesh.visible = s.isoOn;
     this.isoMesh.position.y = this.yOf(s.T);
-    const key = `${s.diagram.uid}|${s.T.toFixed(2)}`;
-    if (key !== this.isoKey) {
-      this.isoKey = key;
-      const sec = computeIso(s.diagram, s.T);
+    const { sec } = isoOf(s.diagram, s.T);
+    if (sec && sec !== this.isoSec) {
+      this.isoSec = sec;
       const ctx = this.isoCanvas.getContext('2d')!;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, 768, 768);
@@ -857,16 +859,27 @@ export class PhaseScene {
     this.vMesh.geometry.computeBoundingSphere();
     this.vMesh.geometry.computeBoundingBox();
     const key = `${s.diagram.uid}|${spec.p1.map((v) => v.toFixed(4))}|${spec.p2.map((v) => v.toFixed(4))}`;
-    if (key !== this.vKey) {
+    const paint = (ras: VerticalRaster, W: number, H: number) => {
+      const ctx = this.vCanvas.getContext('2d')!;
+      ctx.setTransform(this.vCanvas.width / W, 0, 0, this.vCanvas.height / H, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      drawVertical(ctx, W, H, ras, s.diagram, spec, THEME_LIGHT, { margin: { l: 0, r: 0, t: 0, b: 0 }, fontPx: 16 * (W / 640) * 1.0, labels: true, axes: false, liquidAlpha: 40 });
+      this.vTex!.needsUpdate = true;
+      this.dirty = true;
+    };
+    if (useWorkerFor(s.diagram.params)) {
+      // 固溶体体系：栅格在 Worker 中计算（先粗后精），结果到达后经 asyncTick 触发本函数重绘
+      const { ras } = verticalOf(s.diagram, spec, 640, 460, this.range.Tmin, this.range.Tmax);
+      if (ras && ras !== this.vRas) {
+        this.vRas = ras;
+        paint(ras, ras.W, ras.H);
+      }
+      this.vKey = key;
+    } else if (key !== this.vKey) {
       this.vKey = key;
       const draw = (W: number, H: number) => {
-        const ras = computeVertical(s.diagram, spec, W, H, this.range.Tmin, this.range.Tmax);
-        const ctx = this.vCanvas.getContext('2d')!;
-        ctx.setTransform(this.vCanvas.width / W, 0, 0, this.vCanvas.height / H, 0, 0);
-        ctx.clearRect(0, 0, W, H);
-        drawVertical(ctx, W, H, ras, s.diagram, spec, THEME_LIGHT, { margin: { l: 0, r: 0, t: 0, b: 0 }, fontPx: 16 * (W / 640) * 1.0, labels: true, axes: false, liquidAlpha: 40 });
-        this.vTex!.needsUpdate = true;
-        this.dirty = true;
+        const { ras } = verticalOf(s.diagram, spec, W, H, this.range.Tmin, this.range.Tmax);
+        if (ras) paint(ras, W, H);
       };
       draw(160, 115);
       window.clearTimeout(this.vTimer);
@@ -1074,20 +1087,24 @@ export class PhaseScene {
     const pos: number[] = [];
     const ln: THREE.Vector3[] = [];
     const nS = 36;
-    for (let k = 0; k <= nS; k++) {
-      const T = this.range.Tmin + 10 + (k / nS) * (this.range.Tmax - this.range.Tmin - 10);
-      const sec = isothermal(d, T);
-      for (const r of sec.regions) {
-        if (r.key !== rk) continue;
-        const p0 = this.W(r.poly[0], T);
-        for (let i = 1; i < r.poly.length - 1; i++) {
-          const p1 = this.W(r.poly[i], T);
-          const p2 = this.W(r.poly[i + 1], T);
+    const Ts = Array.from({ length: nS + 1 }, (_, k) => this.range.Tmin + 10 + (k / nS) * (this.range.Tmax - this.range.Tmin - 10));
+    const slices = regionSlicesOf(d, rk, Ts);
+    if (!slices) {
+      // 固溶体体系：Worker 中计算，结果到达（asyncTick）后重试
+      this.regionKey = '';
+      return;
+    }
+    for (const { T, polys } of slices) {
+      for (const poly of polys) {
+        const p0 = this.W(poly[0], T);
+        for (let i = 1; i < poly.length - 1; i++) {
+          const p1 = this.W(poly[i], T);
+          const p2 = this.W(poly[i + 1], T);
           pos.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
         }
-        for (let i = 0; i < r.poly.length; i++) {
-          const a = this.W(r.poly[i], T);
-          const b = this.W(r.poly[(i + 1) % r.poly.length], T);
+        for (let i = 0; i < poly.length; i++) {
+          const a = this.W(poly[i], T);
+          const b = this.W(poly[(i + 1) % poly.length], T);
           ln.push(a, b);
         }
       }

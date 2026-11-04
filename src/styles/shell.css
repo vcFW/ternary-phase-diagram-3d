@@ -261,3 +261,33 @@
   padding: 40px;
   color: var(--dim2);
 }
+
+/* 异步计算中：顶栏细进度条；旧图保持显示（灰度 + 降低不透明度）而不是空白 */
+.gbar {
+  position: relative;
+}
+.gbar-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: gbar-slide 1s linear infinite;
+}
+@keyframes gbar-slide {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+.main.computing > *:not(.gbar) {
+  filter: grayscale(1);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}

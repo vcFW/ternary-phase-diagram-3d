@@ -11,6 +11,8 @@ import { NumField, SliderRow } from '../ui/controls';
  */
 export function GlobalBar({ page }: { page: string }) {
   const presetId = useStore((s) => s.presetId);
+  const pendingPreset = useStore((s) => s.pendingPreset);
+  const computing = useStore((s) => s.computing);
   const loadPreset = useStore((s) => s.loadPreset);
   const d = useStore((s) => s.diagram);
   const x0 = useStore((s) => s.x0);
@@ -45,11 +47,12 @@ export function GlobalBar({ page }: { page: string }) {
   };
   return (
     <header className="gbar">
+      {computing && <div className="gbar-progress" role="progressbar" aria-label="正在计算相图" />}
       <div className="gbar-page">{page}</div>
       <div className="gbar-sep" />
       <label className="gbar-field">
         <span>体系</span>
-        <select value={presetId} onChange={(e) => loadPreset(e.target.value)} title={getPreset(presetId).description}>
+        <select value={pendingPreset ?? presetId} onChange={(e) => loadPreset(e.target.value)} title={getPreset(presetId).description}>
           {PRESETS.map((p) => (
             <option key={p.id} value={p.id}>
               {p.short}

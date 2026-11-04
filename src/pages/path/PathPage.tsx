@@ -6,7 +6,8 @@ import { conservationResidual } from '../../math/lever';
 import { fmtNum } from '../../math/linalg';
 import { phaseRule, phaseRuleText } from '../../math/phaseRule';
 import { usePlayback } from '../../panels/CoolingDock';
-import { invariantAnalyses, scheilOf } from '../../state/derived';
+import { useScheil } from '../../state/asyncCompute';
+import { invariantAnalyses } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { AnalysisLayout, PageTitle, useSection, type Section } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
@@ -177,7 +178,7 @@ function ScheilSection() {
   const x0 = useStore((s) => s.x0);
   const setX0 = useStore((s) => s.setX0);
   const trace = useStore((s) => s.trace);
-  const sch = scheilOf(d, x0);
+  const { data: sch, computing: schBusy } = useScheil(d, x0);
   const fin = sch[sch.length - 1];
   const eqFin = trace.finalPhases;
   const ids = Array.from(new Set([...Object.keys(fin.solids), ...eqFin.map((p) => p.id)]));
@@ -186,7 +187,7 @@ function ScheilSection() {
   const Tlo = Math.min(...trace.samples.map((s) => s.T), ...sch.map((s) => s.T));
   return (
     <>
-      <PageTitle title="平衡冷却 vs Scheil 凝固" desc="同一热力学模型、两种极限的物质传输假设：结果差异完全来自假设，而不是热力学。" />
+      <PageTitle title="平衡冷却 vs Scheil 凝固" desc={`同一热力学模型、两种极限的物质传输假设：结果差异完全来自假设，而不是热力学。${schBusy ? '（Scheil 计算中…）' : ''}`} />
       <div className="cols c2">
         <div className="stack">
           <Panel title="液相路径" prov="model">

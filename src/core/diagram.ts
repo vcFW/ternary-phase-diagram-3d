@@ -16,6 +16,15 @@ type Tri = [number, number, number];
  */
 let uidCounter = 0;
 
+/** 可在 Worker 中预先算好、传给主线程的数据 */
+export interface Precomputed {
+  topo?: Topology;
+  liqGrid?: Float32Array;
+}
+
+/** 三维液相面网格的分辨率（每边剖分数） */
+export const LIQ_GRID_N = 120;
+
 export class PhaseDiagram {
   readonly uid = ++uidCounter;
   readonly th: Thermo;
@@ -29,12 +38,14 @@ export class PhaseDiagram {
   private uniCache = new Map<string, Comp[]>();
   private uniCacheT = NaN;
 
-  constructor(params: SystemParams, gridN = 150) {
+  /** pre：已在别处（计算 Worker）算好的拓扑与液相面网格；给出则跳过相应计算 */
+  constructor(params: SystemParams, gridN = 150, pre?: Precomputed) {
     this.params = params;
     this.th = new Thermo(params);
     this.solids = this.th.solids;
     this.sol = this.th.hasSolution ? new SolutionEngine(this.th) : null;
-    this.topo = extractTopology(this.th, this.sol ? Math.min(gridN, 110) : gridN);
+    this.liqGridPre = pre?.liqGrid ?? null;
+    this.topo = pre?.topo ?? extractTopology(this.th, this.sol ? Math.min(gridN, 110) : gridN);
     const ns = this.solids.length;
     for (let a = 0; a < ns; a++)
       for (let b = a + 1; b < ns; b++)
@@ -63,6 +74,62 @@ export class PhaseDiagram {
           (dec ? `加热至 ${cel(dec.T)} 时按 ${dec.reaction.text.split('⇌').reverse().map((t) => t.trim()).join(' ⇌ ')} 分解。` : '');
       }
     }
+  }
+
+  private liqGridPre: Float32Array | null = null;
+
+  /**
+   * 液相面网格：顶点按 i 行（含 N−i+1 个）排列，每顶点 8 个槽 = 各固相饱和温度 Tsat（不足 8 个补 0）。
+   * 固溶体体系的 Tsat 代价很高（argmax 迭代），故在 Worker 中预先算好；否则惰性计算。
+   */
+  liquidusGrid(): Float32Array {
+    if (this.liqGridPre) return this.liqGridPre;
+    const N = LIQ_GRID_N;
+    const nv = ((N + 1) * (N + 2)) / 2;
+    const out = new Float32Array(nv * 8);
+    let v = 0;
+    for (let i = 0; i <= N; i++)
+      for (let j = 0; j <= N - i; j++, v++) {
+        const x: Comp = [i / N, j / N, (N - i - j) / N];
+        for (let s = 0; s < Math.min(8, this.ns); s++) out[v * 8 + s] = this.th.Tsat(s, x);
+      }
+    return (this.liqGridPre = out);
+  }
+
+  /**
+   * 液相线温度与初晶相的网格插值近似（仅用于绘图：逐像素取样的底图、标注定位等）。
+   * 在液相面网格上对各固相的 Tsat 做三角形线性插值再取最大，保留相区交界处的折角。
+   */
+  liquidusFast(x: Comp): { T: number; si: number } {
+    const N = LIQ_GRID_N;
+    const g = this.liquidusGrid();
+    const ns = Math.min(8, this.ns);
+    const fx = x[0] * N;
+    const fy = x[1] * N;
+    const i = Math.max(0, Math.min(N - 1, Math.floor(fx)));
+    const j = Math.max(0, Math.min(N - 1 - i, Math.floor(fy)));
+    const u = fx - i;
+    const v = fy - j;
+    const row = (a: number) => a * (N + 1) - (a * (a - 1)) / 2;
+    const at = (a: number, b: number) => (row(a) + b) * 8;
+    let v0: number, v1: number, v2: number, w0: number, w1: number, w2: number;
+    if (u + v <= 1) {
+      v0 = at(i, j); v1 = at(i + 1, j); v2 = at(i, j + 1);
+      w0 = 1 - u - v; w1 = u; w2 = v;
+    } else {
+      v0 = at(i + 1, j); v1 = at(i, j + 1); v2 = at(i + 1, j + 1);
+      w0 = 1 - v; w1 = 1 - u; w2 = u + v - 1;
+    }
+    let best = -1;
+    let T = -Infinity;
+    for (let s = 0; s < ns; s++) {
+      const t = w0 * g[v0 + s] + w1 * g[v1 + s] + w2 * g[v2 + s];
+      if (t > T) {
+        T = t;
+        best = s;
+      }
+    }
+    return { T, si: best };
   }
 
   get ns(): number {

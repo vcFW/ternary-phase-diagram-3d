@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { drawVertical, haloText, THEME_LIGHT, vLayout, type VLayout } from '../core/canvasDraw';
 import { cel, regionName, toC } from '../core/colors';
-import { endLabel, computeVertical } from '../core/sections';
+import { endLabel } from '../core/sections';
 import { lerpComp, type VerticalRaster } from '../core/vertical';
 import { toXY } from '../core/barycentric';
+import { useWorkerFor } from '../compute/client';
+import { verticalOf } from '../state/asyncCompute';
 import { currentSpec, useStore } from '../state/store';
 import { useSize } from '../ui/useSize';
 import type { Comp } from '../core/types';
@@ -31,14 +33,20 @@ export function VerticalView() {
   const specKey = spec.p1.map((v) => v.toFixed(5)).join() + '|' + spec.p2.map((v) => v.toFixed(5)).join();
 
   // 渐进式栅格：先低分辨率立即出图，空闲后补全
+  const asyncTick = useStore((s) => s.asyncTick);
   useEffect(() => {
     const pw = Math.max(40, Math.floor((w - MARGIN.l - MARGIN.r) * dpr));
     const ph = Math.max(40, Math.floor((h - MARGIN.t - MARGIN.b) * dpr));
-    const lo = computeVertical(d, spec, Math.max(40, pw >> 2), Math.max(30, ph >> 2), range.Tmin, range.Tmax);
-    setRas(lo);
-    const id = window.setTimeout(() => setRas(computeVertical(d, spec, pw, ph, range.Tmin, range.Tmax)), 140);
+    if (useWorkerFor(d.params)) {
+      // 固溶体体系：Worker 中先粗后精，结果到达（asyncTick）后重新取用缓存
+      const { ras: r } = verticalOf(d, spec, pw, ph, range.Tmin, range.Tmax);
+      if (r) setRas(r);
+      return;
+    }
+    setRas(verticalOf(d, spec, Math.max(40, pw >> 2), Math.max(30, ph >> 2), range.Tmin, range.Tmax).ras);
+    const id = window.setTimeout(() => setRas(verticalOf(d, spec, pw, ph, range.Tmin, range.Tmax).ras), 140);
     return () => window.clearTimeout(id);
-  }, [d, specKey, w, h, dpr, range]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [d, specKey, w, h, dpr, range, asyncTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const c = cv.current;

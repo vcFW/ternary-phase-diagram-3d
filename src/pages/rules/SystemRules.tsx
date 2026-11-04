@@ -6,7 +6,8 @@ import { entropyLiq, entropySol, gibbsDuhem } from '../../math/curves';
 import { fmtNum } from '../../math/linalg';
 import { effectiveComponents, phaseRule } from '../../math/phaseRule';
 import { analyzeReaction, reactionThermo } from '../../math/reaction';
-import { invariantAnalyses, scheilOf } from '../../state/derived';
+import { useScheil } from '../../state/asyncCompute';
+import { invariantAnalyses } from '../../state/derived';
 import { useStore } from '../../state/store';
 import { PageTitle } from '../../viz/PageLayout';
 import { Handle, TernaryPlot } from '../../viz/TernaryPlot';
@@ -30,7 +31,7 @@ export function PathRule() {
   const ends = tri ? d.topo.invariants.filter((iv) => iv.rank === 'ternary' && [...iv.solids].sort().join() === [...tri].sort().join()) : [];
   const predicted = ends[0];
   const liqEnd = [...trace.events].reverse().find((e) => e.kind === 'invariant' || (e.kind === 'vanish' && e.title.includes('液相')));
-  const sch = scheilOf(d, x0);
+  const { data: sch } = useScheil(d, x0);
   const schFinal = sch[sch.length - 1];
   const schSolids = Object.entries(schFinal.solids).filter(([, v]) => v > 1e-4).map(([k]) => k);
   const eqFinal = trace.finalPhases.map((p) => p.id);

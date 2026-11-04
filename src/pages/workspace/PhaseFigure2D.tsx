@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { drawIso, drawProjection, THEME_LIGHT, triLayout, type TriLayout } from '../../core/canvasDraw';
 import { cel, phaseColor, solidColor } from '../../core/colors';
-import { computeIso } from '../../core/sections';
+import { isoOf } from '../../state/asyncCompute';
 import type { Comp, Equilibrium } from '../../core/types';
 import { analyzeCurveAt } from '../../math/curves';
 import { curveAtPoint, type PointAnalysis } from '../../math/pointAnalysis';
@@ -41,7 +41,8 @@ export function PhaseFigure2D({ an, trail }: { an: PointAnalysis | null; trail: 
   const fontPx = Math.max(10, Math.min(13, w / 34));
   const pad = Math.max(30, fontPx * 2.6);
   const L: TriLayout = useMemo(() => triLayout(w, h, pad), [w, h, pad]);
-  const sec = useMemo(() => (view === 'iso' ? computeIso(d, T) : null), [view, d, T]);
+  const asyncTick = useStore((s) => s.asyncTick);
+  const sec = useMemo(() => (view === 'iso' ? isoOf(d, T).sec : null), [view, d, T, asyncTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const selCurve = sel?.kind === 'curve' ? sel.id : null;
   const selInv = sel?.kind === 'invariant' ? sel.id : null;
 

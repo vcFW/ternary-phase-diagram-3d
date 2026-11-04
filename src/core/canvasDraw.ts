@@ -280,7 +280,7 @@ function liquidLabelPos(d: PhaseDiagram, T: number): Comp | null {
   for (let i = 1; i < N; i++)
     for (let j = 1; j < N - i; j++) {
       const x: Comp = [i / N, j / N, (N - i - j) / N];
-      if (d.th.liquidus(x).T < T) {
+      if (d.liquidusFast(x).T < T) {
         sx += x[0];
         sy += x[1];
         sz += x[2];
@@ -527,7 +527,7 @@ function projectionBase(d: PhaseDiagram, W: number, H: number, th: Theme, o: Pro
     for (let i = 0; i < W; i++) {
       const x = L.inv(i + 0.5, j + 0.5);
       if (x[0] < 0 || x[1] < 0 || x[2] < 0) continue;
-      const q = d.th.liquidus(x);
+      const q = d.liquidusFast(x);
       Tl[j * W + i] = q.T;
       lab[j * W + i] = q.si;
     }

@@ -79,6 +79,7 @@ export function AppShell() {
       /* 存储不可用时忽略 */
     }
   }, [collapsed]);
+  const computing = useStore((s) => s.computing);
   const Page = pages[route.page];
   const cur = NAV.find((n) => n.id === route.page)!;
   useEffect(() => {
@@ -131,7 +132,7 @@ export function AppShell() {
           {collapsed ? '»' : '« 收起'}
         </button>
       </nav>
-      <div className="main">
+      <div className={`main ${computing ? 'computing' : ''}`}>
         <GlobalBar page={cur.title} />
         <div className="page" key={route.page}>
           <ErrorBoundary resetKey={`${route.page}/${route.sub}`}>

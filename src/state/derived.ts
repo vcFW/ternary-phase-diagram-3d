@@ -64,6 +64,11 @@ export function eqAnalysis(d: PhaseDiagram, x0: Comp, T: number, eq: Equilibrium
   }));
 }
 
+/** 同步派生：按键缓存的 useMemo（缓存键 = 相图 uid + 调用方给出的键） */
+export function useDerived<T>(d: PhaseDiagram, key: string, fn: () => T): T {
+  return useMemo(() => memo('derived', `${d.uid}|${key}`, fn), [d, key]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 /** 当前全局物理状态的分析（React 钩子） */
 export function useEqAnalysis() {
   const d = useStore((s) => s.diagram);
