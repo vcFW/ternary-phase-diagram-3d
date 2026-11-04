@@ -245,21 +245,20 @@ export function extractTopology(th: Thermo, N = 150, opts?: { twoLevel?: boolean
   const newton3 = (p: number, q: number, r: number, x0: Comp): { x: Comp; T: number } | null => {
     let y1 = x0[1];
     let y2 = x0[2];
-    const F = (a: number, b: number) => {
-      const x: Comp = [1 - a - b, a, b];
-      const tp = th.Tsat(p, x);
-      return [tp - th.Tsat(q, x), tp - th.Tsat(r, x)];
-    };
     for (let it = 0; it < 40; it++) {
-      const f = F(y1, y2);
+      const x: Comp = [1 - y1 - y2, y1, y2];
+      const gp = th.gradTsat(p, x);
+      const gq = th.gradTsat(q, x);
+      const gr = th.gradTsat(r, x);
+      if (!gp || !gq || !gr) return null;
+      const tp = th.Tsat(p, x);
+      const f = [tp - th.Tsat(q, x), tp - th.Tsat(r, x)];
       if (Math.abs(f[0]) + Math.abs(f[1]) < 1e-9) break;
-      const h = 1e-7;
-      const f1 = F(y1 + h, y2);
-      const f2 = F(y1, y2 + h);
-      const j11 = (f1[0] - f[0]) / h;
-      const j21 = (f1[1] - f[1]) / h;
-      const j12 = (f2[0] - f[0]) / h;
-      const j22 = (f2[1] - f[1]) / h;
+      // F₁ = Tp − Tq，F₂ = Tp − Tr；x = [1−u−v, u, v]
+      const j11 = gp[1] - gp[0] - (gq[1] - gq[0]);
+      const j12 = gp[2] - gp[0] - (gq[2] - gq[0]);
+      const j21 = gp[1] - gp[0] - (gr[1] - gr[0]);
+      const j22 = gp[2] - gp[0] - (gr[2] - gr[0]);
       const det = j11 * j22 - j12 * j21;
       if (Math.abs(det) < 1e-12) return null;
       let d1 = (f[0] * j22 - f[1] * j12) / det;
@@ -274,9 +273,9 @@ export function extractTopology(th: Thermo, N = 150, opts?: { twoLevel?: boolean
       if (y1 < 0 || y2 < 0 || y1 + y2 > 1) return null;
     }
     const x: Comp = [1 - y1 - y2, y1, y2];
-    const f = F(y1, y2);
-    if (Math.abs(f[0]) + Math.abs(f[1]) > 1e-6) return null;
-    return { x, T: th.Tsat(p, x) };
+    const tp = th.Tsat(p, x);
+    if (Math.abs(tp - th.Tsat(q, x)) + Math.abs(tp - th.Tsat(r, x)) > 1e-6) return null;
+    return { x, T: tp };
   };
 
   const handleTri = (a: number, b: number, c: number) => {

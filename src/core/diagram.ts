@@ -181,35 +181,44 @@ export class PhaseDiagram {
     return out;
   }
 
+  /** refineUni 的统计：调用次数、总迭代数、回退到初值的次数（测试用） */
+  readonly refineStats = { calls: 0, iters: 0, fallbacks: 0 };
+
+  /** 单变线点：解 T_a(x) = T_b(x) = T（解析 Jacobian 的牛顿法，二次收敛） */
   private refineUni(a: number, b: number, x0: Comp, T: number): Comp {
+    const st = this.refineStats;
+    st.calls++;
     let y1 = x0[1];
     let y2 = x0[2];
     const th = this.th;
-    const F = (u: number, v: number) => {
-      const x: Comp = [1 - u - v, u, v];
-      return [th.Tsat(a, x) - T, th.Tsat(b, x) - T];
-    };
-    for (let it = 0; it < 12; it++) {
-      const f = F(y1, y2);
-      if (Math.abs(f[0]) + Math.abs(f[1]) < 1e-9) break;
-      const h = 1e-7;
-      const f1 = F(y1 + h, y2);
-      const f2 = F(y1, y2 + h);
-      const j11 = (f1[0] - f[0]) / h;
-      const j21 = (f1[1] - f[1]) / h;
-      const j12 = (f2[0] - f[0]) / h;
-      const j22 = (f2[1] - f[1]) / h;
+    for (let it = 0; it < 20; it++) {
+      const x: Comp = [1 - y1 - y2, y1, y2];
+      const ga = th.gradTsat(a, x);
+      const gb = th.gradTsat(b, x);
+      if (!ga || !gb) break;
+      const f0 = th.Tsat(a, x) - T;
+      const f1 = th.Tsat(b, x) - T;
+      if (Math.abs(f0) + Math.abs(f1) < 1e-9) {
+        st.iters += it;
+        return x;
+      }
+      // x = [1−u−v, u, v]：∂/∂u = g₁ − g₀，∂/∂v = g₂ − g₀
+      const j11 = ga[1] - ga[0];
+      const j12 = ga[2] - ga[0];
+      const j21 = gb[1] - gb[0];
+      const j22 = gb[2] - gb[0];
       const det = j11 * j22 - j12 * j21;
-      if (Math.abs(det) < 1e-12) return x0;
-      const d1 = (f[0] * j22 - f[1] * j12) / det;
-      const d2 = (j11 * f[1] - j21 * f[0]) / det;
+      if (Math.abs(det) < 1e-12) break;
+      const d1 = (f0 * j22 - f1 * j12) / det;
+      const d2 = (j11 * f1 - j21 * f0) / det;
       const ny1 = y1 - d1;
       const ny2 = y2 - d2;
-      if (ny1 < 0 || ny2 < 0 || ny1 + ny2 > 1 || Math.abs(d1) + Math.abs(d2) > 0.1) return x0;
+      if (ny1 < 0 || ny2 < 0 || ny1 + ny2 > 1 || Math.abs(d1) + Math.abs(d2) > 0.1) break;
       y1 = ny1;
       y2 = ny2;
     }
-    return [1 - y1 - y2, y1, y2];
+    st.fallbacks++;
+    return x0;
   }
 
   /** 液相 + 单固相：沿固相→x0 的射线求饱和液相，返回液相成分，失败返回 null */

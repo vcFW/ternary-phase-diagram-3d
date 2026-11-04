@@ -97,6 +97,61 @@ export class Thermo {
     return [oab * x[1] + oac * x[2] - g, oab * x[0] + obc * x[2] - g, oac * x[0] + obc * x[1] - g];
   }
 
+  /**
+   * 饱和温度对成分的解析梯度 ∂T_s/∂xₖ（把 x 当作三个独立变量；沿单纯形方向 d（Σd = 0）的方向导数 = g·d）。
+   *   化学计量相：T_s = N/D，N = Hs + Σnᵢμᵢᴱˣ，D = Ss − RΣnᵢ ln xᵢ，商法则；
+   *   固溶体：F(x,T) = max_y[μᴸ(x,T)·y − G_s(y,T)] = 0 的隐函数，由包络定理 dT_s/dxₖ = −F_xₖ / F_T（在最优 y* 处取值）。
+   * 无定义处（某组元含量为 0）返回 null。
+   */
+  gradTsat(si: number, x: Comp): Comp | null {
+    const s = this.solids[si];
+    const om = this.om;
+    // ∂Gex/∂xₖ 与 ∂μᵢᴱˣ/∂xₖ
+    const dGex = (k: number) => {
+      let g = 0;
+      for (let j = 0; j < 3; j++) if (j !== k) g += omOf(om, k, j) * x[j];
+      return g;
+    };
+    const dMuEx = (i: number, k: number) => (i === k ? 0 : omOf(om, i, k)) - dGex(k);
+    for (let i = 0; i < 3; i++) if ((s.n[i] > 0 || s.sol) && x[i] <= 1e-300) return null;
+    if (!s.sol) {
+      const n = s.n;
+      let N = s.Hs;
+      let D = s.Ss;
+      const mu = this.muEx(x);
+      for (let i = 0; i < 3; i++) {
+        N += n[i] * mu[i];
+        if (n[i] > 0) D -= R * n[i] * Math.log(x[i]);
+      }
+      if (!(D > 0 && N > 0)) return null;
+      const g: Comp = [0, 0, 0];
+      for (let k = 0; k < 3; k++) {
+        let Nk = 0;
+        for (let i = 0; i < 3; i++) Nk += n[i] * dMuEx(i, k);
+        const Dk = n[k] > 0 ? (-R * n[k]) / x[k] : 0;
+        g[k] = (Nk * D - N * Dk) / (D * D);
+      }
+      return g;
+    }
+    const r = this.solTsatY(si, x);
+    if (!r || r.T <= 0) return null;
+    const { T, y } = r;
+    const c = this.p.components;
+    const sol = s.sol;
+    let FT = 0;
+    for (let i = 0; i < 3; i++) {
+      FT += y[i] * (-c[i].dH / c[i].Tm + R * Math.log(x[i]));
+      FT -= y[i] * -sol.b[i] + (y[i] > 1e-300 ? R * y[i] * Math.log(y[i]) : 0);
+    }
+    const g: Comp = [0, 0, 0];
+    for (let k = 0; k < 3; k++) {
+      let Fx = 0;
+      for (let i = 0; i < 3; i++) Fx += y[i] * ((i === k ? (R * T) / x[k] : 0) + dMuEx(i, k));
+      g[k] = -Fx / FT;
+    }
+    return g;
+  }
+
   /** 固相 si 的液相线（饱和）温度 / K，成分 x 处 */
   Tsat(si: number, x: Comp): number {
     const s = this.solids[si];
@@ -230,11 +285,16 @@ export class Thermo {
    * 这正是对 Δ(T) = max_y F 的牛顿迭代（包络定理：dΔ/dT = −B(y*)），二次收敛。
    */
   private solTsat(si: number, x: Comp): number {
+    return this.solTsatY(si, x)?.T ?? 0;
+  }
+
+  /** 同 solTsat，并返回最优固相成分 y*（梯度计算用） */
+  private solTsatY(si: number, x: Comp): { T: number; y: Comp } | null {
     const s = this.solids[si];
     const sol = s.sol!;
     const L = this.liqParams();
     const exL = this.muEx(x);
-    for (let i = 0; i < 3; i++) if (s.n[i] > 0.5 && x[i] <= 1e-300) return 0;
+    for (let i = 0; i < 3; i++) if (s.n[i] > 0.5 && x[i] <= 1e-300) return { T: 0, y: s.n };
     let y: Comp = s.n;
     let T = 1000;
     for (let it = 0; it < 60; it++) {
@@ -247,7 +307,7 @@ export class Thermo {
         B += y[i] * (L.b[i] - R * Math.log(x[i]) - sol.b[i] + R * Math.log(y[i]));
       }
       A -= regGex(sol.om, y);
-      if (B <= 0 || A <= 0) return 0;
+      if (B <= 0 || A <= 0) return { T: 0, y };
       const Tn = A / B;
       const done = Math.abs(Tn - T) < 1e-9 * Tn;
       T = Tn;
@@ -255,7 +315,7 @@ export class Thermo {
       // 包络定理：y 的误差只以平方进入 T，中间迭代无需 1e-14 精度
       y = argmaxY(sol, this.muLiq(x, T), T, y, 1e-10);
     }
-    return T;
+    return { T, y };
   }
 
   /**
@@ -293,6 +353,12 @@ export class Thermo {
     const tpd = this.Gliq(x, T) - (mu[0] * x[0] + mu[1] * x[1] + mu[2] * x[2]);
     return tpd >= -1e-6;
   }
+}
+
+function omOf(om: [number, number, number], i: number, j: number): number {
+  const a = Math.min(i, j);
+  const b = Math.max(i, j);
+  return a === 0 && b === 1 ? om[0] : a === 0 && b === 2 ? om[1] : om[2];
 }
 
 /** 解 3×3：行向量 a,b,c 与右端 g，即 a·μ=g0, b·μ=g1, c·μ=g2 */
